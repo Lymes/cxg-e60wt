@@ -1,7 +1,6 @@
 # Prerequisites
 *.d
 *.map 
-*.ihx 
 *.lk 
 *.cdb 
 *.bin 
