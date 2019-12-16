@@ -47,6 +47,9 @@
 #define EEPROM_SAVE_TIMEOUT 2000
 #define HEATPOINT_DISPLAY_DELAY 5000
 
+#define MAX_ADC 130
+#define MIN_ADC 45
+
 struct EEPROM_DATA
 {
     uint16_t heatPoint;
@@ -127,19 +130,24 @@ void mainLoop()
         return;
     }
 
-    // uint32_t voltage = V_REF * val;
-    // voltage *= 1000;
-    // voltage /= 1024;
-    //val = (voltage % 10000) / 10; // millesimi di volt
-    // val = voltage / 100; // centesimi di volt, es 324
-    uint16_t displayVal = adcVal % 1000;
-
     uint8_t sleep = checkSleep(nowTime);
     if (oldSleep != sleep)
     {
         beepAlarm();
     }
     oldSleep = sleep;
+
+    // Degrees value
+    uint16_t displayVal = (MAX_HEAT - MIN_HEAT) * (adcVal - MIN_ADC) / (MAX_ADC - MIN_ADC);
+
+    // 100 degrees before the heatPoint we start to slow down the heater
+    // before that we keep the heater at 100%
+    // if the diff is negative, we'll stop the heater
+    int16_t pwmVal = _eepromData.heatPoint - displayVal;
+    pwmVal = (pwmVal < 0) ? 0 : (pwmVal > 100) ? 100 : pwmVal;
+    PWM_duty(PWM_CH1, sleep ? 0 : pwmVal);
+
+    displayVal = pwmVal;
 
     uint8_t action = checkButtons(nowTime);
     checkHeatPointValidity();
@@ -151,11 +159,11 @@ void mainLoop()
 
     if (sleep)
     {
-        displaySymbol |= ((localCnt / 1024) % 2) ? SYM_MOON : 0;
+        displaySymbol |= ((localCnt / 500) % 2) ? SYM_MOON : 0; // 1Hz flashing moon
     }
-    else
+    else if (pwmVal)
     {
-        displaySymbol |= ((localCnt / 128) % 2) ? SYM_SUN : 0;
+        displaySymbol |= ((localCnt / 50) % 2) ? SYM_SUN : 0; // 10Hz flashing heater
     }
 
     S7C_setDigit(0, displayVal / 100);
