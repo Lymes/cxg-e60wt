@@ -62,7 +62,6 @@ static uint32_t _buttonTimer = 0;
 static uint32_t _longPressTimer = 0;
 static uint32_t _haveToSaveData = 0;
 static uint32_t _heatPointDisplayTime = 0;
-//static uint8_t _digits[4];
 
 static struct EEPROM_DATA _eepromData;
 
