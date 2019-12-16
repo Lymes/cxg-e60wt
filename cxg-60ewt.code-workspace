@@ -1,0 +1,20 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"stm32-for-vscode.openocdPath": "openocd",
+		"cortex-debug.openocdPath": "openocd",
+		"stm32-for-vscode.makePath": "make",
+		"cortex-debug.armToolchainPath": "",
+		"files.associations": {
+			"cstddef": "c",
+			"beep.h": "c",
+			"stm8s.h": "c",
+			"s7c.h": "c",
+			"string.h": "c"
+		}
+	}
+}
