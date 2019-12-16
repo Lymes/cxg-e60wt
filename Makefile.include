@@ -47,7 +47,7 @@ $(OBJ_DIR)/%.rel: %.s
 directories: ${OBJ_DIR}
 
 hex: $(TARGET)
-	packihx $(TARGET) > $(TARGET).hex
+	packihx $(TARGET) > main.hex
 
 ${OBJ_DIR}:
 	${MKDIR_P} ${OBJ_DIR}
