@@ -33,7 +33,7 @@ CFLAGS  += --stack-auto --noinduction --use-non-free
 LDFLAGS  = -m$(ARCH) -l$(ARCH) --out-fmt-ihx
 MKDIR_P  = mkdir -p
 
-all: directories $(TARGET) size
+all: directories $(TARGET) size hex
 
 $(TARGET): $(OBJS)
 	$(CC) $(LDFLAGS) $(OBJS) -o $@
@@ -45,6 +45,9 @@ $(OBJ_DIR)/%.rel: %.s
 	$(AS) $(ASFLAGS) $<
 
 directories: ${OBJ_DIR}
+
+hex: $(TARGET)
+	packihx $(TARGET) > $(TARGET).hex
 
 ${OBJ_DIR}:
 	${MKDIR_P} ${OBJ_DIR}
