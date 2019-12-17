@@ -1,4 +1,4 @@
-# CXG-60EWT Soldering Iron firmware (STM8S103K3)
+# CXG-E60WT Soldering Iron firmware (STM8S103K3)
 
 A firmware for new soldering irons with STM8S103K3 MCU onboard. Some missing features have been implemented, such es. sleep/wake up modes, sounds, errors check, etc. 
 
@@ -30,9 +30,9 @@ make
 sudo make install
 ```
 
-## CXG-60EWT Scheme
+## CXG-E60WT Scheme
 
-![CXG-60EWT Scheme](/images/scheme.gif)
+![CXG-E60WT Scheme](/images/scheme.gif)
 
 ## Additional hardware
 

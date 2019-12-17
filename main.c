@@ -47,8 +47,8 @@
 #define EEPROM_SAVE_TIMEOUT 2000
 #define HEATPOINT_DISPLAY_DELAY 5000
 
-#define MAX_ADC 130
-#define MIN_ADC 45
+#define MAX_ADC_RT 130
+#define MIN_ADC_RT 45
 
 struct EEPROM_DATA
 {
@@ -86,9 +86,6 @@ void setup()
     PWM_init(PWM_CH1);
     PWM_duty(PWM_CH1, 0);
 
-    // Configure ADC
-    ADC_init();
-
     beepAlarm();
     _sleepTimer = currentMillis();
     _heatPointDisplayTime = _sleepTimer + HEATPOINT_DISPLAY_DELAY;
@@ -108,11 +105,18 @@ void mainLoop()
 {
     static uint8_t oldSleep = 0;
     static uint16_t oldADCVal = 0;
+    static uint16_t oldADCUI = 0;
     static uint16_t localCnt = 0;
     uint8_t displaySymbol = SYM_CELS;
     uint32_t nowTime = currentMillis();
 
-    uint16_t adcVal = ADC_read();
+    // Input power sensor
+    uint16_t adcUIn = ADC_read(ADC1_CSR_CH1);
+    adcUIn = ((oldADCUI * 3) + adcUIn) >> 2; // noise filter
+    oldADCUI = adcUIn;
+
+    // Temperature sensor
+    uint16_t adcVal = ADC_read(ADC1_CSR_CH0);
     adcVal = ((oldADCVal * 3) + adcVal) >> 2; // noise filter
     oldADCVal = adcVal;
 
@@ -137,7 +141,7 @@ void mainLoop()
     oldSleep = sleep;
 
     // Degrees value
-    uint16_t displayVal = (MAX_HEAT - MIN_HEAT) * (adcVal - MIN_ADC) / (MAX_ADC - MIN_ADC);
+    uint16_t displayVal = (MAX_HEAT - MIN_HEAT) * (adcVal - MIN_ADC_RT) / (MAX_ADC_RT - MIN_ADC_RT);
 
     // 100 degrees before the heatPoint we start to slow down the heater
     // before that we keep the heater at 100%

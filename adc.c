@@ -26,18 +26,15 @@
 #include <adc.h>
 #include <stm8s.h>
 
-void ADC_init()
+uint16_t ADC_read(uint8_t channel)
 {
-    /* Configure ADC channel 1 (PB0)  */
-    ADC1_CSR |= 0;
+    /* Configure ADC channel */
+    ADC1_CSR = channel;
     /* Right-align data */
     ADC1_CR2 |= (1 << ADC1_CR2_ALIGN);
     /* Wake ADC from power down */
     ADC1_CR1 |= 1 << ADC1_CR1_ADON;
-}
 
-uint16_t ADC_read()
-{
     uint8_t adcH, adcL;
     ADC1_CR1 |= (1 << ADC1_CR1_ADON);
     while (!(ADC1_CSR & (1 << ADC1_CSR_EOC)))
