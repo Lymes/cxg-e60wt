@@ -116,8 +116,8 @@ static uint8_t numSegments;
 static uint8_t prevUpdateIdx = 0;        // The previously updated segment or digit
 static uint8_t digitCodes[MAXNUMDIGITS]; // The active setting of each segment of each digit
 static uint64_t prevUpdateTime = 0;      // The time (millis()) when the display was last updated
-static int ledOnTime = 2;                // The time (us) to wait with LEDs on
-static int waitOffTime = 2;              // The time (us) to wait with LEDs off
+static int ledOnTime = 1;                // The time (us) to wait with LEDs on
+static int waitOffTime = 0;              // The time (us) to wait with LEDs off
 static uint8_t waitOffActive = 0;        // Whether  the program is waiting with LEDs off
 
 void S7C_init()

@@ -148,7 +148,7 @@ void mainLoop()
     pwmVal = (pwmVal < 0) ? 0 : (pwmVal > 100) ? 100 : pwmVal;
     PWM_duty(PWM_CH1, sleep ? 0 : pwmVal);
 
-    displayVal = pwmVal;
+    // FOR DEBUG: displayVal = pwmVal;
 
     uint8_t action = checkButtons(nowTime);
     checkHeatPointValidity();
@@ -194,7 +194,7 @@ uint8_t checkSleep(uint32_t nowTime)
         _sleepTimer = nowTime;
         return LOW;
     }
-    if ((nowTime - _sleepTimer) > 1000) //_eepromData.sleepTimeout)
+    if ((nowTime - _sleepTimer) > _eepromData.sleepTimeout)
     {
         return HIGH;
     }
