@@ -3,8 +3,6 @@
 
 A firmware for new soldering irons with STM8S103K3 MCU onboard. Some missing features have been implemented, such es. sleep/wake up modes, sounds, errors check, etc. 
 
-Just download main.hex file to load it directly with stm8flash or STVP-STM8 STM Visual Programmer.
-
 For those who wants to re-build the firmware: you'll need two essential pieces of software to work with the STM8:
 
 - stm8flash, a utility for interfacing your ST-Link dongle
