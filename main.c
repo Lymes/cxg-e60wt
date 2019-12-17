@@ -37,8 +37,6 @@
 #define F_CPU 16000000UL
 #endif
 
-#define V_REF 33
-
 #define SHORT_PRESS 700
 #define LONG_PRESS 1800
 #define FAST_INCREMENT 100
