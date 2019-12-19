@@ -2,7 +2,7 @@
 //  clock.h
 //  cxg-60ewt
 //
-//  Created by Leonid Mesentsev on 26/06/2019.
+//  Created by Leonid Mesentsev on 26/11/2019.
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a copy
 //  of this software and associated documentation files (the "Software"), to deal
@@ -31,7 +31,7 @@
 // void TIM1_overflow_handler() __interrupt(11);
 void TIM4_overflow_handler() __interrupt(TIM4_UPD_OVF);
 
-void TIM1_init();
+void TIM4_init();
 
 uint32_t currentMillis();
 

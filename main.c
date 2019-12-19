@@ -2,7 +2,7 @@
 //  main.c
 //  cxg-60ewt
 //
-//  Created by Leonid Mesentsev on 26/06/2019.
+//  Created by Leonid Mesentsev on 26/11/2019.
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a copy
 //  of this software and associated documentation files (the "Software"), to deal
@@ -74,7 +74,7 @@ void setup()
     // At startup the clock output is divided by 8
     CLK_CKDIVR = 0x0;
     disable_interrupts();
-    TIM1_init();
+    TIM4_init();
     enable_interrupts();
 
     // Configure 7-segments display
@@ -120,7 +120,7 @@ void mainLoop()
 
     // ER1: short on sensor
     // ER2: sensor is broken
-    uint8_t error = (adcVal < 10) ? 1 : (adcVal > 1000) ? 2 : 0;
+    /*    uint8_t error = (adcVal < 10) ? 1 : (adcVal > 1000) ? 2 : 0;
     if (error)
     {
         PWM_duty(PWM_CH1, 0); // switch OFF the heater
@@ -129,7 +129,7 @@ void mainLoop()
         S7C_refreshDisplay(nowTime);
         beep();
         return;
-    }
+    }*/
 
     uint8_t sleep = checkSleep(nowTime);
     if (oldSleep != sleep)
@@ -146,9 +146,10 @@ void mainLoop()
     // if the diff is negative, we'll stop the heater
     int16_t pwmVal = _eepromData.heatPoint - displayVal;
     pwmVal = (pwmVal < 0) ? 0 : (pwmVal > 100) ? 100 : pwmVal;
+    pwmVal /= 2;
     PWM_duty(PWM_CH1, sleep ? 0 : pwmVal);
 
-    // FOR DEBUG: displayVal = pwmVal;
+    displayVal = pwmVal;
 
     uint8_t action = checkButtons(nowTime);
     checkHeatPointValidity();
@@ -194,7 +195,7 @@ uint8_t checkSleep(uint32_t nowTime)
         _sleepTimer = nowTime;
         return LOW;
     }
-    if ((nowTime - _sleepTimer) > _eepromData.sleepTimeout)
+    if ((nowTime - _sleepTimer) > 1) //_eepromData.sleepTimeout)
     {
         return HIGH;
     }
