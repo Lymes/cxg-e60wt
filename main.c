@@ -101,7 +101,7 @@ void setup()
     if (_eepromData.heatPoint == 0) // First launch, eprom empty
     {
         _eepromData.heatPoint = 270;
-        _eepromData.sleepTimeout = 60000;      // 1 min, heatPoint 100C
+        _eepromData.sleepTimeout = 180000;     // 3 min, heatPoint 100C
         _eepromData.deepSleepTimeout = 600000; // 10 min, heatPoint 0
         eeprom_write(EEPROM_START_ADDR, &_eepromData, sizeof(_eepromData));
     }
