@@ -202,7 +202,9 @@ void main()
 
 uint8_t checkSleep(uint32_t nowTime)
 {
-    if (getPin(PB5) == LOW) // Vibro
+    static uint8_t oldSensorState = 0;
+    uint8_t sensorState = getPin(PB5);
+    if (sensorState != oldSensorState)
     {
         _sleepTimer = nowTime;
         return LOW;
