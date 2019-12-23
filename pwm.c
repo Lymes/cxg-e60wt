@@ -53,8 +53,8 @@
 
 void PWM_init(uint8_t ch)
 {
-    TIM2_PSCR = 3;
-    int _TIM2_ARR = 999; /* 2khz */
+    TIM2_PSCR = 7;       /* 16000000 / (2^7 * (1 + 999)) = 125 Hz */
+    int _TIM2_ARR = 999; /* 125 Hz */
     TIM2_ARRH = (_TIM2_ARR >> 8) & 0xff;
     TIM2_ARRL = _TIM2_ARR & 0xff;
     if (ch & PWM_CH1)

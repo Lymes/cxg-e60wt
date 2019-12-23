@@ -37,16 +37,23 @@
 #define F_CPU 16000000UL
 #endif
 
+enum
+{
+    NOSLEEP,
+    SLEEP,
+    DEEPSLEEP
+};
+
 #define SHORT_PRESS 700
 #define LONG_PRESS 1800
-#define FAST_INCREMENT 100
+#define FAST_INCREMENT 80
 #define MIN_HEAT 50
 #define MAX_HEAT 450
 #define EEPROM_SAVE_TIMEOUT 2000
 #define HEATPOINT_DISPLAY_DELAY 5000
-
+#define SLEEP_TEMP 100
 #define MAX_ADC_RT 130
-#define MIN_ADC_RT 45
+#define MIN_ADC_RT 40
 
 struct EEPROM_DATA
 {
@@ -81,8 +88,9 @@ void setup()
     S7C_init();
 
     // Configure PWM
+    pinMode(PD4, OUTPUT);
     PWM_init(PWM_CH1);
-    PWM_duty(PWM_CH1, 0);
+    PWM_duty(PWM_CH1, 50);
 
     beepAlarm();
     _sleepTimer = currentMillis();
@@ -94,7 +102,7 @@ void setup()
     {
         _eepromData.heatPoint = 270;
         _eepromData.sleepTimeout = 60000;      // 1 min, heatPoint 100C
-        _eepromData.deepSleepTimeout = 900000; // 15 min, heatPoint 0
+        _eepromData.deepSleepTimeout = 600000; // 10 min, heatPoint 0
         eeprom_write(EEPROM_START_ADDR, &_eepromData, sizeof(_eepromData));
     }
 }
@@ -106,30 +114,31 @@ void mainLoop()
     static uint16_t oldADCUI = 0;
     static uint16_t localCnt = 0;
     uint8_t displaySymbol = SYM_CELS;
+    static uint16_t oldDisplayValue = 0;
     uint32_t nowTime = currentMillis();
 
     // Input power sensor
     uint16_t adcUIn = ADC_read(ADC1_CSR_CH1);
-    adcUIn = ((oldADCUI * 3) + adcUIn) >> 2; // noise filter
+    adcUIn = ((oldADCUI * 7) + adcUIn) >> 3; // noise filter
     oldADCUI = adcUIn;
 
     // Temperature sensor
     uint16_t adcVal = ADC_read(ADC1_CSR_CH0);
-    adcVal = ((oldADCVal * 3) + adcVal) >> 2; // noise filter
+    adcVal = ((oldADCVal * 7) + adcVal) >> 3; // noise filter
     oldADCVal = adcVal;
 
     // ER1: short on sensor
     // ER2: sensor is broken
-    /*    uint8_t error = (adcVal < 10) ? 1 : (adcVal > 1000) ? 2 : 0;
+    uint8_t error = (adcVal < 10) ? 1 : (adcVal > 1000) ? 2 : 0;
     if (error)
     {
-        PWM_duty(PWM_CH1, 0); // switch OFF the heater
+        PWM_duty(PWM_CH1, 100); // switch OFF the heater
         S7C_setChars("ER");
         S7C_setDigit(2, error);
         S7C_refreshDisplay(nowTime);
         beep();
         return;
-    }*/
+    }
 
     uint8_t sleep = checkSleep(nowTime);
     if (oldSleep != sleep)
@@ -141,15 +150,12 @@ void mainLoop()
     // Degrees value
     uint16_t displayVal = (MAX_HEAT - MIN_HEAT) * (adcVal - MIN_ADC_RT) / (MAX_ADC_RT - MIN_ADC_RT);
 
-    // 100 degrees before the heatPoint we start to slow down the heater
-    // before that we keep the heater at 100%
+    // 50 degrees before the heatPoint we start to slow down the heater
+    // before that we keep the heater at 50%
     // if the diff is negative, we'll stop the heater
-    int16_t pwmVal = _eepromData.heatPoint - displayVal;
-    pwmVal = (pwmVal < 0) ? 0 : (pwmVal > 100) ? 100 : pwmVal;
-    pwmVal /= 2;
-    PWM_duty(PWM_CH1, sleep ? 0 : pwmVal);
-
-    displayVal = pwmVal;
+    int16_t diff = (sleep == SLEEP) ? SLEEP_TEMP - displayVal : _eepromData.heatPoint - displayVal;
+    int16_t pwmVal = (sleep == DEEPSLEEP || diff < 0) ? 100 : (diff > 50) ? 50 : 100 - diff;
+    PWM_duty(PWM_CH1, pwmVal);
 
     uint8_t action = checkButtons(nowTime);
     checkHeatPointValidity();
@@ -159,18 +165,24 @@ void mainLoop()
         displaySymbol |= SYM_TERM;
     }
 
-    if (sleep)
-    {
-        displaySymbol |= ((localCnt / 500) % 2) ? SYM_MOON : 0; // 1Hz flashing moon
-    }
-    else if (pwmVal)
-    {
-        displaySymbol |= ((localCnt / 50) % 2) ? SYM_SUN : 0; // 10Hz flashing heater
-    }
+    displaySymbol |= sleep && ((localCnt / 500) % 2) ? SYM_MOON : 0;      // 1Hz flashing moon
+    displaySymbol |= pwmVal < 100 && ((localCnt / 50) % 2) ? SYM_SUN : 0; // 10Hz flashing heater
 
-    S7C_setDigit(0, displayVal / 100);
-    S7C_setDigit(1, (displayVal % 100) / 10);
-    S7C_setDigit(2, displayVal % 10);
+    //displayVal = ((oldDisplayValue * 7) + displayVal) >> 3; // noise filter
+    //oldDisplayValue = displayVal;
+
+    if (sleep != DEEPSLEEP)
+    {
+        S7C_setDigit(0, displayVal / 100);
+        S7C_setDigit(1, (displayVal % 100) / 10);
+        S7C_setDigit(2, displayVal % 10);
+    }
+    else
+    {
+        S7C_setSymbol(0, 0);
+        S7C_setSymbol(1, 0);
+        S7C_setSymbol(2, 0);
+    }
     S7C_setSymbol(3, displaySymbol);
 
     checkPendingDataSave(nowTime);
@@ -195,11 +207,15 @@ uint8_t checkSleep(uint32_t nowTime)
         _sleepTimer = nowTime;
         return LOW;
     }
-    if ((nowTime - _sleepTimer) > 1) //_eepromData.sleepTimeout)
+    if ((nowTime - _sleepTimer) > _eepromData.deepSleepTimeout)
     {
-        return HIGH;
+        return DEEPSLEEP;
     }
-    return LOW;
+    else if ((nowTime - _sleepTimer) > _eepromData.sleepTimeout)
+    {
+        return SLEEP;
+    }
+    return NOSLEEP;
 }
 
 void checkHeatPointValidity()
