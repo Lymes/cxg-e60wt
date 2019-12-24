@@ -207,9 +207,10 @@ uint8_t checkSleep(uint32_t nowTime)
     if (sensorState != oldSensorState)
     {
         _sleepTimer = nowTime;
-        return LOW;
+        oldSensorState = sensorState;
+        return NOSLEEP;
     }
-    if ((nowTime - _sleepTimer) > _eepromData.deepSleepTimeout)
+    else if ((nowTime - _sleepTimer) > _eepromData.deepSleepTimeout)
     {
         return DEEPSLEEP;
     }
