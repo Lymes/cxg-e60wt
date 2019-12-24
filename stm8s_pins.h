@@ -90,11 +90,11 @@ enum REG
 };
 
 #define BIT(reg) ((reg) % 8)
-#define ODR(reg) (_SFR_(PA_BASE_ADDRESS + ((reg) / 8) * 5 + 0x00))
-#define IDR(reg) (_SFR_(PA_BASE_ADDRESS + ((reg) / 8) * 5 + 0x01))
-#define DDR(reg) (_SFR_(PA_BASE_ADDRESS + ((reg) / 8) * 5 + 0x02))
-#define CR1(reg) (_SFR_(PA_BASE_ADDRESS + ((reg) / 8) * 5 + 0x03))
-#define CR2(reg) (_SFR_(PA_BASE_ADDRESS + ((reg) / 8) * 5 + 0x04))
+#define ODR(reg) (_SFR_(PA_BASE_ADDRESS + ((reg) >> 3) * 5 + 0x00))
+#define IDR(reg) (_SFR_(PA_BASE_ADDRESS + ((reg) >> 3) * 5 + 0x01))
+#define DDR(reg) (_SFR_(PA_BASE_ADDRESS + ((reg) >> 3) * 5 + 0x02))
+#define CR1(reg) (_SFR_(PA_BASE_ADDRESS + ((reg) >> 3) * 5 + 0x03))
+#define CR2(reg) (_SFR_(PA_BASE_ADDRESS + ((reg) >> 3) * 5 + 0x04))
 
 #define configure_as_input(reg) (DDR(reg) &= ~(1 << BIT(reg)), CR1(reg) |= (1 << BIT(reg)), CR2(reg) |= (1 << BIT(reg)))
 #define configure_as_output(reg) (DDR(reg) |= (1 << BIT(reg)), CR1(reg) |= (1 << BIT(reg)), CR2(reg) |= (1 << BIT(reg)))
