@@ -154,7 +154,7 @@ void mainLoop()
     // before that we keep the heater at 50%
     // if the diff is negative, we'll stop the heater
     int16_t diff = (sleep == SLEEP) ? SLEEP_TEMP - displayVal : _eepromData.heatPoint - displayVal;
-    int16_t pwmVal = (sleep == DEEPSLEEP || diff < 0) ? 100 : (diff > 50) ? 50 : 100 - diff;
+    int16_t pwmVal = (sleep == DEEPSLEEP || diff < 0) ? 100 : (diff > 50) ? 50 : 90 - diff;
     PWM_duty(PWM_CH1, pwmVal);
 
     uint8_t action = checkButtons(nowTime);
@@ -167,9 +167,6 @@ void mainLoop()
 
     displaySymbol |= sleep && ((localCnt / 500) % 2) ? SYM_MOON : 0;      // 1Hz flashing moon
     displaySymbol |= pwmVal < 100 && ((localCnt / 50) % 2) ? SYM_SUN : 0; // 10Hz flashing heater
-
-    //displayVal = ((oldDisplayValue * 7) + displayVal) >> 3; // noise filter
-    //oldDisplayValue = displayVal;
 
     if (sleep != DEEPSLEEP)
     {
