@@ -41,7 +41,7 @@ enum MODE
     OUTPUT
 };
 
-enum REG
+enum PIN
 {
     PA0,
     PA1,
@@ -89,21 +89,21 @@ enum REG
     PE7,
 };
 
-#define BIT(reg) ((reg) % 8)
-#define ODR(reg) (_SFR_(PA_BASE_ADDRESS + ((reg) >> 3) * 5 + 0x00))
-#define IDR(reg) (_SFR_(PA_BASE_ADDRESS + ((reg) >> 3) * 5 + 0x01))
-#define DDR(reg) (_SFR_(PA_BASE_ADDRESS + ((reg) >> 3) * 5 + 0x02))
-#define CR1(reg) (_SFR_(PA_BASE_ADDRESS + ((reg) >> 3) * 5 + 0x03))
-#define CR2(reg) (_SFR_(PA_BASE_ADDRESS + ((reg) >> 3) * 5 + 0x04))
+#define BIT(pin) ((pin) % 8)
+#define ODR(pin) (_SFR_(PA_BASE_ADDRESS + ((pin) >> 3) * 5 + 0x00))
+#define IDR(pin) (_SFR_(PA_BASE_ADDRESS + ((pin) >> 3) * 5 + 0x01))
+#define DDR(pin) (_SFR_(PA_BASE_ADDRESS + ((pin) >> 3) * 5 + 0x02))
+#define CR1(pin) (_SFR_(PA_BASE_ADDRESS + ((pin) >> 3) * 5 + 0x03))
+#define CR2(pin) (_SFR_(PA_BASE_ADDRESS + ((pin) >> 3) * 5 + 0x04))
 
-#define configure_as_input(reg) (DDR(reg) &= ~(1 << BIT(reg)), CR1(reg) |= (1 << BIT(reg)), CR2(reg) |= (1 << BIT(reg)))
-#define configure_as_output(reg) (DDR(reg) |= (1 << BIT(reg)), CR1(reg) |= (1 << BIT(reg)), CR2(reg) |= (1 << BIT(reg)))
+#define configure_as_input(pin) (DDR(pin) &= ~(1 << BIT(pin)), CR1(pin) |= (1 << BIT(pin)), CR2(pin) |= (1 << BIT(pin)))
+#define configure_as_output(pin) (DDR(pin) |= (1 << BIT(pin)), CR1(pin) |= (1 << BIT(pin)), CR2(pin) |= (1 << BIT(pin)))
 
-#define set_high(reg) (ODR(reg) |= (1 << BIT(reg)))
-#define set_low(reg) (ODR(reg) &= ~(1 << BIT(reg)))
+#define set_high(pin) (ODR(pin) |= (1 << BIT(pin)))
+#define set_low(pin) (ODR(pin) &= ~(1 << BIT(pin)))
 
-#define pinMode(reg, mode) (((mode) == INPUT) ? configure_as_input(reg) : configure_as_output(reg))
-#define setPin(reg, val) (((val) == 0) ? set_low(reg) : set_high(reg))
-#define getPin(reg) (IDR(reg) & (1 << BIT(reg)))
+#define pinMode(pin, mode) (((mode) == INPUT) ? configure_as_input(pin) : configure_as_output(pin))
+#define setPin(pin, val) (((val) == 0) ? set_low(pin) : set_high(pin))
+#define getPin(pin) (IDR(pin) & (1 << BIT(pin)))
 
 #endif // _STM8S_PINS_H_
