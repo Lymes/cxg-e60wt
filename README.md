@@ -1,5 +1,4 @@
 # CXG-E60WT Soldering Iron firmware (STM8S103K3)
-# WORK IN PROGRESS
 
 A firmware for new soldering irons with STM8S103K3 MCU onboard. Some missing features have been implemented, such es. sleep/wake up modes, sounds, errors check, etc. 
 
