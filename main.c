@@ -159,10 +159,11 @@ void mainLoop()
 
     uint8_t action = checkButtons(nowTime);
     checkHeatPointValidity();
-    if (action || nowTime < _heatPointDisplayTime)
+    uint8_t tempInRange = (displayVal >= _eepromData.heatPoint - 10) && (displayVal <= _eepromData.heatPoint + 10);
+    if (action || nowTime < _heatPointDisplayTime || tempInRange)
     {
         displayVal = _eepromData.heatPoint;
-        displaySymbol |= SYM_TERM;
+        displaySymbol |= SYM_TEMP;
     }
 
     displaySymbol |= sleep && ((localCnt / 500) % 2) ? SYM_MOON : 0;      // 1Hz flashing moon
@@ -289,7 +290,6 @@ void checkPendingDataSave(uint32_t nowTime)
     if (_haveToSaveData && (nowTime - _haveToSaveData) > EEPROM_SAVE_TIMEOUT)
     {
         S7C_setSymbol(3, SYM_SAVE);
-        S7C_refreshDisplay(nowTime);
         eeprom_write(EEPROM_START_ADDR, &_eepromData, sizeof(_eepromData));
         _haveToSaveData = 0;
     }

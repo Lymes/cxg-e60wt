@@ -29,12 +29,11 @@
 #include <stdint.h>
 
 // 4th digit symbols
-#define SYM_SUN 16
-#define SYM_MOON 8
-#define SYM_TEMP 64
 #define SYM_CELS 1
+#define SYM_MOON 8
+#define SYM_SUN 16
 #define SYM_SAVE 32
-#define SYM_TERM 64
+#define SYM_TEMP 64
 
 #ifndef MAXNUMDIGITS
 #define MAXNUMDIGITS 8 // Can be increased, but the max number is 2^31
@@ -50,7 +49,7 @@
 
 void S7C_init();
 
-void S7C_refreshDisplay(uint64_t ticks);
+void S7C_refreshDisplay(uint32_t ticks);
 void S7C_begin(uint8_t hardwareConfig, uint8_t numDigitsIn, uint8_t digitPinsIn[],
                uint8_t segmentPinsIn[], uint8_t resOnSegmentsIn, uint8_t updateWithDelaysIn,
                uint8_t leadingZerosIn, uint8_t disableDecPoint);

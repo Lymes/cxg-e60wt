@@ -25,13 +25,15 @@
 
 #include <eeprom.h>
 #include <string.h>
+#include <s7c.h>
+#include <clock.h>
 
 void eeprom_unlock()
 {
     FLASH_DUKR = FLASH_DUKR_KEY1;
     FLASH_DUKR = FLASH_DUKR_KEY2;
     while (!(FLASH_IAPSR & (1 << FLASH_IAPSR_DUL)))
-        ;
+        S7C_refreshDisplay(currentMillis());
 }
 
 void option_bytes_unlock()
@@ -48,7 +50,7 @@ void eeprom_lock()
 void eeprom_wait_busy()
 {
     while (!(FLASH_IAPSR & (1 << FLASH_IAPSR_EOP)))
-        ;
+        S7C_refreshDisplay(currentMillis());
 }
 
 void eeprom_read(uint16_t addr, void *buf, int len)
@@ -61,10 +63,11 @@ void eeprom_read(uint16_t addr, void *buf, int len)
 void eeprom_write(uint16_t addr, void *buf, int len)
 {
     eeprom_unlock();
-    //memcpy((void *)addr, buf, len);
+    uint8_t *storage = (uint8_t *)buf;
     for (int i = 0; i < len; i++, addr++)
     {
-        _MEM_(addr) = ((uint8_t *)buf)[i];
+        _MEM_(addr) = storage[i];
+        S7C_refreshDisplay(currentMillis());
         eeprom_wait_busy();
     }
     eeprom_lock();
