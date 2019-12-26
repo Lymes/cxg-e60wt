@@ -35,7 +35,6 @@
 #define abs(x) (((x) < 0) ? -(x) : (x))
 
 #define MENU_DISPLAY_DELAY 5000
-#define DEBOUNCE_TIME 20
 #define MULTICLICK_TIME 250
 
 extern struct EEPROM_DATA _eepromData;
