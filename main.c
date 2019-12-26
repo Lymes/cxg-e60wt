@@ -119,12 +119,12 @@ void mainLoop()
 
     // Input power sensor
     uint16_t adcUIn = ADC_read(ADC1_CSR_CH1);
-    adcUIn = ((oldADCUI * 7) + adcUIn) >> 3; // noise filter
+    adcUIn = ((oldADCUI * 3) + adcUIn) >> 2; // noise filter
     oldADCUI = adcUIn;
 
     // Temperature sensor
     uint16_t adcVal = ADC_read(ADC1_CSR_CH0);
-    adcVal = ((oldADCVal * 7) + adcVal) >> 3; // noise filter
+    adcVal = ((oldADCVal * 3) + adcVal) >> 2; // noise filter
     oldADCVal = adcVal;
 
     // ER1: short on sensor
@@ -144,8 +144,8 @@ void mainLoop()
     if (oldSleep != sleep)
     {
         beepAlarm();
+        oldSleep = sleep;
     }
-    oldSleep = sleep;
 
     // Degrees value
     uint16_t displayVal = (MAX_HEAT - MIN_HEAT) * (adcVal - MIN_ADC_RT) / (MAX_ADC_RT - MIN_ADC_RT);
@@ -159,6 +159,11 @@ void mainLoop()
 
     uint8_t action = checkButtons(nowTime);
     checkHeatPointValidity();
+
+    // We will show the current heatPoint
+    //   * if any button is pressed
+    //   * till _heatPointDisplayTime timeout is reached
+    //   * when the current temperature is in range ±10 degrees
     uint8_t tempInRange = (displayVal >= _eepromData.heatPoint - 10) && (displayVal <= _eepromData.heatPoint + 10);
     if (action || nowTime < _heatPointDisplayTime || tempInRange)
     {
@@ -166,6 +171,7 @@ void mainLoop()
         displaySymbol |= SYM_TEMP;
     }
 
+    // Setup status symbol, flashing using local counter overflow
     displaySymbol |= sleep && ((localCnt / 500) % 2) ? SYM_MOON : 0;      // 1Hz flashing moon
     displaySymbol |= pwmVal < 100 && ((localCnt / 50) % 2) ? SYM_SUN : 0; // 10Hz flashing heater
 
@@ -177,6 +183,7 @@ void mainLoop()
     }
     else
     {
+        // Set blank display
         S7C_setSymbol(0, 0);
         S7C_setSymbol(1, 0);
         S7C_setSymbol(2, 0);
