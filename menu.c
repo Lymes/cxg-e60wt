@@ -51,7 +51,6 @@ extern uint32_t _haveToSaveData;
 //
 void setup_menu()
 {
-    static uint16_t localCnt = 0;
     _menuDisplayTime = currentMillis() + MENU_DISPLAY_DELAY;
 
     int16_t menuIndex = 0;
@@ -142,7 +141,6 @@ void setup_menu()
 
         checkPendingDataSave(nowTime);
         S7C_refreshDisplay(nowTime);
-        localCnt++;
         delay_ms(1);
     }
 }
