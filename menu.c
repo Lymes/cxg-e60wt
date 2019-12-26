@@ -110,7 +110,7 @@ void setup_menu()
                 checkButton(&_btnMinus, &_eepromData.sleepTimeout, -1, nowTime); // MINUS button
                 if (oldSleepTimeout != _eepromData.sleepTimeout)
                 {
-                    _eepromData.sleepTimeout = (_eepromData.sleepTimeout > 30) ? 0 : _eepromData.sleepTimeout;
+                    _eepromData.sleepTimeout = (_eepromData.sleepTimeout < 1) ? 1 : (_eepromData.sleepTimeout > 30) ? 30 : _eepromData.sleepTimeout;
                     changed = true;
                 }
                 S7C_setSymbol(0, 0);
