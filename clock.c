@@ -24,8 +24,11 @@
 //
 
 #include <clock.h>
+#include <main.h>
 
 #define BEEP_DURATION 100
+
+extern struct EEPROM_DATA _eepromData;
 
 // internal clock counter, will overflow every 49 days ;)
 volatile uint32_t _currentMsecs = 0;
@@ -83,6 +86,8 @@ void TIM4_init()
 
 void beep()
 {
+    if (!_eepromData.enableSound)
+        return;
     _beep1 = 0;
     _beep2 = 0;
     _duration = 0;
@@ -90,6 +95,8 @@ void beep()
 
 void beepAlarm()
 {
+    if (!_eepromData.enableSound)
+        return;
     _beep1 = 0;
     _beep2 = 0;
     _duration = 3;

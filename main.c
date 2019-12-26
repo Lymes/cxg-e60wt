@@ -33,6 +33,7 @@
 #include <eeprom.h>
 #include <clock.h>
 #include <menu.h>
+#include <buttons.h>
 
 #ifndef F_CPU
 #warning "F_CPU not defined, using 16MHz by default"
@@ -46,9 +47,6 @@ enum
     DEEPSLEEP
 };
 
-#define SHORT_PRESS 700
-#define LONG_PRESS 1800
-#define FAST_INCREMENT 40
 #define MIN_HEAT 50
 #define MAX_HEAT 450
 #define EEPROM_SAVE_TIMEOUT 2000
@@ -57,24 +55,16 @@ enum
 #define MAX_ADC_RT 130
 #define MIN_ADC_RT 40
 
-struct EEPROM_DATA
-{
-    uint16_t heatPoint;
-    uint32_t sleepTimeout;
-    uint32_t deepSleepTimeout;
-};
-
+uint32_t _haveToSaveData = 0;
 static uint32_t _sleepTimer = 0;
-static uint32_t _buttonTimer = 0;
-static uint32_t _longPressTimer = 0;
-static uint32_t _haveToSaveData = 0;
 static uint32_t _heatPointDisplayTime = 0;
 
-static struct EEPROM_DATA _eepromData;
+struct EEPROM_DATA _eepromData;
+struct Button _btnPlus = {PB7, 0, 0, 0, 0, 0};
+struct Button _btnMinus = {PB6, 0, 0, 0, 0, 0};
 
 uint8_t checkSleep(uint32_t nowTime);
 void checkHeatPointValidity();
-void checkPendingDataSave(uint32_t nowTime);
 
 void setup()
 {
@@ -91,7 +81,7 @@ void setup()
     // Configure PWM
     pinMode(PD4, OUTPUT);
     PWM_init(PWM_CH1);
-    PWM_duty(PWM_CH1, 50);
+    PWM_duty(PWM_CH1, 100); // Heater OFF
 
     beepAlarm();
     _sleepTimer = currentMillis();
@@ -102,13 +92,15 @@ void setup()
     if (_eepromData.heatPoint == 0) // First launch, eeprom empty
     {
         _eepromData.heatPoint = 270;
-        _eepromData.sleepTimeout = 180000;     // 3 min, heatPoint 100C
-        _eepromData.deepSleepTimeout = 600000; // 10 min, heatPoint 0
+        _eepromData.enableSound = 1;
+        _eepromData.calibrationValue = 0;
+        _eepromData.sleepTimeout = 3;      // 3 min, heatPoint 100C
+        _eepromData.deepSleepTimeout = 10; // 10 min, heatPoint 0
         eeprom_write(EEPROM_START_ADDR, &_eepromData, sizeof(_eepromData));
     }
 
     // Press +button when power the device will enter to Setup Menu
-    if (checkButton(PB7, 0, 0, _sleepTimer))
+    if (checkButton(&_btnPlus, 0, 0, _sleepTimer))
     {
         setup_menu();
     }
@@ -164,14 +156,18 @@ void mainLoop()
     int16_t pwmVal = (sleep == DEEPSLEEP || diff < 0) ? 100 : (diff > 50) ? 50 : 90 - diff;
     PWM_duty(PWM_CH1, pwmVal);
 
-    uint8_t action = checkButton(PB7, &_eepromData.heatPoint, 1, nowTime); // ADD button
-    action |= checkButton(PB6, &_eepromData.heatPoint, -1, nowTime);       // MINUS button
-    if (!action)
+    uint16_t oldHeatPoint = _eepromData.heatPoint;
+    uint8_t action = checkButton(&_btnPlus, &_eepromData.heatPoint, 1, nowTime) || // ADD button
+                     checkButton(&_btnMinus, &_eepromData.heatPoint, -1, nowTime); // MINUS button
+    if (action)
     {
-        _buttonTimer = 0;
-        _longPressTimer = 0;
+        _heatPointDisplayTime = nowTime + HEATPOINT_DISPLAY_DELAY;
+        if (oldHeatPoint != _eepromData.heatPoint)
+        {
+            checkHeatPointValidity();
+            _haveToSaveData = nowTime;
+        }
     }
-    checkHeatPointValidity();
 
     // We will show the current heatPoint
     //   * if any button is pressed
@@ -228,11 +224,11 @@ uint8_t checkSleep(uint32_t nowTime)
         oldSensorState = sensorState;
         return NOSLEEP;
     }
-    else if ((nowTime - _sleepTimer) > _eepromData.deepSleepTimeout)
+    else if ((nowTime - _sleepTimer) > _eepromData.deepSleepTimeout * 60000)
     {
         return DEEPSLEEP;
     }
-    else if ((nowTime - _sleepTimer) > _eepromData.sleepTimeout)
+    else if ((nowTime - _sleepTimer) > _eepromData.sleepTimeout * 60000)
     {
         return SLEEP;
     }
@@ -245,36 +241,6 @@ void checkHeatPointValidity()
         _eepromData.heatPoint = MAX_HEAT;
     if (_eepromData.heatPoint < MIN_HEAT)
         _eepromData.heatPoint = MIN_HEAT;
-}
-
-uint8_t checkButton(uint8_t button, uint16_t *value, int8_t increment, uint32_t nowTime)
-{
-    static uint8_t skipCounter = 0;
-    if (getPin(button) == LOW)
-    {
-        if (!_buttonTimer)
-            _buttonTimer = nowTime;
-        if (!_longPressTimer)
-            _longPressTimer = _buttonTimer;
-        if ((nowTime - _longPressTimer) > LONG_PRESS)
-        {
-            if (!(skipCounter++ % FAST_INCREMENT))
-            {
-                *value += increment;
-                _haveToSaveData = nowTime;
-            }
-        }
-        else if ((nowTime - _buttonTimer) > SHORT_PRESS)
-        {
-            *value += increment;
-            _haveToSaveData = nowTime;
-            _buttonTimer = 0;
-            beep();
-        }
-        _heatPointDisplayTime = nowTime + HEATPOINT_DISPLAY_DELAY;
-        return HIGH;
-    }
-    return LOW;
 }
 
 void checkPendingDataSave(uint32_t nowTime)

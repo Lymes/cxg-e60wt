@@ -17,7 +17,9 @@
 			"string.h": "c",
 			"clock.h": "c",
 			"eeprom.h": "c",
-			"stm8s_pins.h": "c"
+			"stm8s_pins.h": "c",
+			"chrono": "c",
+			"complex": "c"
 		}
 	}
 }

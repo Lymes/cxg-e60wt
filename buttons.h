@@ -1,5 +1,5 @@
 //
-//  main.h
+//  buttons.h
 //  cxg-60ewt
 //
 //  Created by Leonid Mesentsev on 26/11/2019.
@@ -23,20 +23,22 @@
 //  THE SOFTWARE.
 //
 
-#ifndef _MAIN_H_
-#define _MAIN_H_
+#ifndef _BUTTONS_H_
+#define _BUTTONS_H_
 
 #include <stdint.h>
 
-struct EEPROM_DATA
+struct Button
 {
-    uint16_t heatPoint;
-    int16_t calibrationValue;
-    uint16_t enableSound;
-    uint16_t sleepTimeout;
-    uint16_t deepSleepTimeout;
+    uint8_t pin;
+    uint8_t lastState;
+    uint32_t lastBounceTime;
+    uint32_t longPressTimer;
+    uint8_t depressed;
+    uint8_t clickCount;
 };
 
-void checkPendingDataSave(uint32_t nowTime);
+uint8_t checkButton(struct Button *button, int16_t *value, int8_t increment, uint32_t nowTime);
+uint8_t checkDoubleClick(struct Button *btn, int16_t *value, int8_t increment, uint32_t nowTime);
 
-#endif //_MAIN_H_
+#endif //_BUTTONS_H_
