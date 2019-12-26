@@ -25,12 +25,14 @@
 
 #include <stm8s.h>
 #include <stm8s_pins.h>
+#include <main.h>
 #include <delay.h>
 #include <pwm.h>
 #include <s7c.h>
 #include <adc.h>
 #include <eeprom.h>
 #include <clock.h>
+#include <menu.h>
 
 #ifndef F_CPU
 #warning "F_CPU not defined, using 16MHz by default"
@@ -73,7 +75,6 @@ static struct EEPROM_DATA _eepromData;
 uint8_t checkSleep(uint32_t nowTime);
 void checkHeatPointValidity();
 void checkPendingDataSave(uint32_t nowTime);
-uint8_t checkButton(uint8_t button, uint16_t *value, int8_t increment, uint32_t nowTime);
 
 void setup()
 {
@@ -104,6 +105,12 @@ void setup()
         _eepromData.sleepTimeout = 180000;     // 3 min, heatPoint 100C
         _eepromData.deepSleepTimeout = 600000; // 10 min, heatPoint 0
         eeprom_write(EEPROM_START_ADDR, &_eepromData, sizeof(_eepromData));
+    }
+
+    // Press +button when power the device will enter to Setup Menu
+    if (checkButton(PB7, 0, 0, _sleepTimer))
+    {
+        setup_menu();
     }
 }
 
@@ -243,7 +250,7 @@ void checkHeatPointValidity()
 uint8_t checkButton(uint8_t button, uint16_t *value, int8_t increment, uint32_t nowTime)
 {
     static uint8_t skipCounter = 0;
-    if (getPin(button) == LOW) // PLUS BUTTON
+    if (getPin(button) == LOW)
     {
         if (!_buttonTimer)
             _buttonTimer = nowTime;

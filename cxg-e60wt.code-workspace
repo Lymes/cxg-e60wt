@@ -14,7 +14,10 @@
 			"beep.h": "c",
 			"stm8s.h": "c",
 			"s7c.h": "c",
-			"string.h": "c"
+			"string.h": "c",
+			"clock.h": "c",
+			"eeprom.h": "c",
+			"stm8s_pins.h": "c"
 		}
 	}
 }
