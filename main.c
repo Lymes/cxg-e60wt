@@ -82,6 +82,7 @@ void setup()
     // Configure PWM
     pinMode(PD4, OUTPUT);
     PWM_init(PWM_CH1);
+    PWM_duty(PWM_CH1, 100); // set heater OFF
 
     _sleepTimer = currentMillis();
     _heatPointDisplayTime = _sleepTimer + HEATPOINT_DISPLAY_DELAY;
@@ -101,13 +102,14 @@ void setup()
     }
 
     beepAlarm();
-    PWM_duty(PWM_CH1, 50);
 
     // Press +button when power the device will enter to Setup Menu
     if (checkButton(&_btnPlus, 0, 0, _sleepTimer))
     {
         setup_menu();
     }
+    // Now we can switch ON the heater at 50%
+    PWM_duty(PWM_CH1, 50);
 }
 
 void mainLoop()
@@ -179,7 +181,7 @@ void mainLoop()
     //   * if any button is pressed
     //   * till _heatPointDisplayTime timeout is reached
     //   * when the current temperature is in range ±10 degrees
-    uint8_t tempInRange = false; //(displayVal >= _eepromData.heatPoint - 10) && (displayVal <= _eepromData.heatPoint + 10);
+    uint8_t tempInRange = (displayVal >= _eepromData.heatPoint - 10) && (displayVal <= _eepromData.heatPoint + 10);
     if (action || nowTime < _heatPointDisplayTime || tempInRange)
     {
         displayVal = _eepromData.heatPoint;
