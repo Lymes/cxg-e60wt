@@ -49,11 +49,12 @@ enum
 
 #define MIN_HEAT 50
 #define MAX_HEAT 450
-#define EEPROM_SAVE_TIMEOUT 2000
-#define HEATPOINT_DISPLAY_DELAY 5000
-#define SLEEP_TEMP 100
 #define MAX_ADC_RT 130
 #define MIN_ADC_RT 40
+
+#define SLEEP_TEMP 100
+#define EEPROM_SAVE_TIMEOUT 2000
+#define HEATPOINT_DISPLAY_DELAY 5000
 
 uint32_t _haveToSaveData = 0;
 static uint32_t _sleepTimer = 0;
@@ -81,7 +82,6 @@ void setup()
     // Configure PWM
     pinMode(PD4, OUTPUT);
     PWM_init(PWM_CH1);
-    PWM_duty(PWM_CH1, 100); // Heater OFF
 
     _sleepTimer = currentMillis();
     _heatPointDisplayTime = _sleepTimer + HEATPOINT_DISPLAY_DELAY;
@@ -101,6 +101,7 @@ void setup()
     }
 
     beepAlarm();
+    PWM_duty(PWM_CH1, 50);
 
     // Press +button when power the device will enter to Setup Menu
     if (checkButton(&_btnPlus, 0, 0, _sleepTimer))
@@ -115,7 +116,7 @@ void mainLoop()
     static uint16_t oldADCVal = 0;
     static uint16_t oldADCUI = 0;
     static uint16_t localCnt = 0;
-    uint8_t displaySymbol = SYM_CELS;
+    uint8_t displaySymbol = 0;
     static uint16_t oldDisplayValue = 0;
     uint32_t nowTime = currentMillis();
 
@@ -178,7 +179,7 @@ void mainLoop()
     //   * if any button is pressed
     //   * till _heatPointDisplayTime timeout is reached
     //   * when the current temperature is in range ±10 degrees
-    uint8_t tempInRange = (displayVal >= _eepromData.heatPoint - 10) && (displayVal <= _eepromData.heatPoint + 10);
+    uint8_t tempInRange = false; //(displayVal >= _eepromData.heatPoint - 10) && (displayVal <= _eepromData.heatPoint + 10);
     if (action || nowTime < _heatPointDisplayTime || tempInRange)
     {
         displayVal = _eepromData.heatPoint;
@@ -191,6 +192,7 @@ void mainLoop()
 
     if (sleep != DEEPSLEEP)
     {
+        displaySymbol |= SYM_CELS;
         S7C_setDigit(0, displayVal / 100);
         S7C_setDigit(1, (displayVal % 100) / 10);
         S7C_setDigit(2, displayVal % 10);
