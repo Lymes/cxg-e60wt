@@ -83,9 +83,14 @@ void setup()
     PWM_init(PWM_CH1);
     PWM_duty(PWM_CH1, 100); // Heater OFF
 
+    _sleepTimer = currentMillis();
+    _heatPointDisplayTime = _sleepTimer + HEATPOINT_DISPLAY_DELAY;
+
     // EEPROM
     eeprom_read(EEPROM_START_ADDR, &_eepromData, sizeof(_eepromData));
-    if (_eepromData.heatPoint == 0) // First launch, eeprom empty
+
+    // First launch, eeprom empty OR -button pressed when power the device
+    if (_eepromData.heatPoint == 0 || checkButton(&_btnMinus, 0, 0, _sleepTimer))
     {
         _eepromData.heatPoint = 270;
         _eepromData.enableSound = 1;
@@ -96,8 +101,6 @@ void setup()
     }
 
     beepAlarm();
-    _sleepTimer = currentMillis();
-    _heatPointDisplayTime = _sleepTimer + HEATPOINT_DISPLAY_DELAY;
 
     // Press +button when power the device will enter to Setup Menu
     if (checkButton(&_btnPlus, 0, 0, _sleepTimer))
