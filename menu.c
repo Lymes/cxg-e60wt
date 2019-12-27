@@ -73,7 +73,6 @@ void setup_menu()
         }
         else
         {
-            uint8_t changed = false;
             uint16_t oldSoundValue = _eepromData.enableSound;
             int16_t oldCalibrationValue = _eepromData.calibrationValue;
             uint16_t oldSleepTimeout = _eepromData.sleepTimeout;
@@ -88,7 +87,7 @@ void setup_menu()
                 if (oldSoundValue != _eepromData.enableSound)
                 {
                     _eepromData.enableSound = (_eepromData.enableSound > 1) ? 0 : _eepromData.enableSound;
-                    changed = true;
+                    _haveToSaveData = nowTime;
                 }
                 S7C_setDigit(2, _eepromData.enableSound);
                 break;
@@ -98,7 +97,7 @@ void setup_menu()
                 if (oldCalibrationValue != _eepromData.calibrationValue)
                 {
                     _eepromData.calibrationValue = (_eepromData.calibrationValue < -99) ? -99 : (_eepromData.calibrationValue > 99) ? 99 : _eepromData.calibrationValue;
-                    changed = true;
+                    _haveToSaveData = nowTime;
                 }
                 S7C_setSymbol(0, _eepromData.calibrationValue < 0 ? 0x40 : 0);
                 S7C_setDigit(1, abs(_eepromData.calibrationValue / 10));
@@ -110,7 +109,7 @@ void setup_menu()
                 if (oldSleepTimeout != _eepromData.sleepTimeout)
                 {
                     _eepromData.sleepTimeout = (_eepromData.sleepTimeout < 1) ? 1 : (_eepromData.sleepTimeout > 30) ? 30 : _eepromData.sleepTimeout;
-                    changed = true;
+                    _haveToSaveData = nowTime;
                 }
                 S7C_setSymbol(0, 0);
                 S7C_setDigit(1, _eepromData.sleepTimeout / 10);
@@ -119,10 +118,10 @@ void setup_menu()
             case 3:                                                                  // DEEP SLEEP: values SLEEP-60 minutes
                 checkButton(&_btnPlus, &_eepromData.deepSleepTimeout, 1, nowTime);   // ADD button
                 checkButton(&_btnMinus, &_eepromData.deepSleepTimeout, -1, nowTime); // MINUS button
+                _eepromData.deepSleepTimeout = (_eepromData.deepSleepTimeout < _eepromData.sleepTimeout) ? _eepromData.sleepTimeout : (_eepromData.deepSleepTimeout > 60) ? 60 : _eepromData.deepSleepTimeout;
                 if (oldDeepSleepTimeout != _eepromData.deepSleepTimeout)
                 {
-                    _eepromData.deepSleepTimeout = (_eepromData.deepSleepTimeout < _eepromData.sleepTimeout) ? _eepromData.sleepTimeout : (_eepromData.deepSleepTimeout > 60) ? 60 : _eepromData.deepSleepTimeout;
-                    changed = true;
+                    _haveToSaveData = nowTime;
                 }
                 S7C_setSymbol(0, 0);
                 S7C_setDigit(1, _eepromData.deepSleepTimeout / 10);
@@ -130,11 +129,6 @@ void setup_menu()
                 break;
             default:
                 S7C_setChars("ERR");
-            }
-            if (changed)
-            {
-                _haveToSaveData = nowTime;
-                changed = false;
             }
             S7C_setSymbol(3, 0);
         }
