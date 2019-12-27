@@ -28,6 +28,7 @@
 #include <stm8s_pins.h>
 #include <delay.h>
 #include <clock.h>
+#include <string.h>
 
 #define DEBOUNCE_TIME 20
 #define MULTICLICK_TIME 250
@@ -84,7 +85,7 @@ uint8_t checkDoubleClick(struct Button *btn, int16_t *value, int8_t increment, u
     if (nowTime - btn->lastBounceTime > DEBOUNCE_TIME && btnState != btn->depressed)
     {
         btn->depressed = btnState;
-        if (btn->depressed)
+        if (!btn->depressed)
             btn->clickCount++;
     }
     btn->lastState = btnState;
@@ -99,7 +100,6 @@ uint8_t checkDoubleClick(struct Button *btn, int16_t *value, int8_t increment, u
         {
             *value += increment;
             beep();
-            btn->lastBounceTime = 0;
             return HIGH;
         }
     }

@@ -83,10 +83,6 @@ void setup()
     PWM_init(PWM_CH1);
     PWM_duty(PWM_CH1, 100); // Heater OFF
 
-    beepAlarm();
-    _sleepTimer = currentMillis();
-    _heatPointDisplayTime = _sleepTimer + HEATPOINT_DISPLAY_DELAY;
-
     // EEPROM
     eeprom_read(EEPROM_START_ADDR, &_eepromData, sizeof(_eepromData));
     if (_eepromData.heatPoint == 0) // First launch, eeprom empty
@@ -98,6 +94,10 @@ void setup()
         _eepromData.deepSleepTimeout = 10; // 10 min, heatPoint 0
         eeprom_write(EEPROM_START_ADDR, &_eepromData, sizeof(_eepromData));
     }
+
+    beepAlarm();
+    _sleepTimer = currentMillis();
+    _heatPointDisplayTime = _sleepTimer + HEATPOINT_DISPLAY_DELAY;
 
     // Press +button when power the device will enter to Setup Menu
     if (checkButton(&_btnPlus, 0, 0, _sleepTimer))
@@ -147,12 +147,13 @@ void mainLoop()
     }
 
     // Degrees value
-    uint16_t displayVal = (MAX_HEAT - MIN_HEAT) * (adcVal - MIN_ADC_RT) / (MAX_ADC_RT - MIN_ADC_RT);
+    int16_t currentDegrees = (MAX_HEAT - MIN_HEAT) * (adcVal - MIN_ADC_RT) / (MAX_ADC_RT - MIN_ADC_RT);
+    currentDegrees += _eepromData.calibrationValue;
 
     // 50 degrees before the heatPoint we start to slow down the heater
     // before that we keep the heater at 50%
     // if the diff is negative, we'll stop the heater
-    int16_t diff = (sleep == SLEEP) ? SLEEP_TEMP - displayVal : _eepromData.heatPoint - displayVal;
+    int16_t diff = (sleep == SLEEP) ? SLEEP_TEMP - currentDegrees : _eepromData.heatPoint - currentDegrees;
     int16_t pwmVal = (sleep == DEEPSLEEP || diff < 0) ? 100 : (diff > 50) ? 50 : 90 - diff;
     PWM_duty(PWM_CH1, pwmVal);
 
@@ -169,6 +170,7 @@ void mainLoop()
         }
     }
 
+    uint16_t displayVal = (currentDegrees < 0) ? 0 : currentDegrees;
     // We will show the current heatPoint
     //   * if any button is pressed
     //   * till _heatPointDisplayTime timeout is reached
