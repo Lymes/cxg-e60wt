@@ -122,12 +122,12 @@ void mainLoop()
 
     // Input power sensor
     uint16_t adcUIn = ADC_read(ADC1_CSR_CH1);
-    adcUIn = ((oldADCUI * 3) + adcUIn) >> 2; // noise filter
+    adcUIn = ((oldADCUI * 7) + adcUIn) >> 3; // noise filter
     oldADCUI = adcUIn;
 
     // Temperature sensor
     uint16_t adcVal = ADC_read(ADC1_CSR_CH0);
-    adcVal = ((oldADCVal * 3) + adcVal) >> 2; // noise filter
+    adcVal = ((oldADCVal * 7) + adcVal) >> 3; // noise filter
     oldADCVal = adcVal;
 
     // ER1: short on sensor
