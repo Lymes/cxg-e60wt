@@ -91,9 +91,9 @@ void setup_menu()
                 }
                 S7C_setDigit(2, _eepromData.enableSound);
                 break;
-            case 1:                                                                  // CALIBRATION: values from -99 to 99
-                checkButton(&_btnPlus, &_eepromData.calibrationValue, 1, nowTime);   // ADD button
-                checkButton(&_btnMinus, &_eepromData.calibrationValue, -1, nowTime); // MINUS button
+            case 1: // CALIBRATION: values from -99 to 99
+                checkButton(&_btnPlus, &_eepromData.calibrationValue, 1, nowTime);
+                checkButton(&_btnMinus, &_eepromData.calibrationValue, -1, nowTime);
                 if (oldCalibrationValue != _eepromData.calibrationValue)
                 {
                     _eepromData.calibrationValue = (_eepromData.calibrationValue < -99) ? -99 : (_eepromData.calibrationValue > 99) ? 99 : _eepromData.calibrationValue;
@@ -103,9 +103,9 @@ void setup_menu()
                 S7C_setDigit(1, abs(_eepromData.calibrationValue / 10));
                 S7C_setDigit(2, abs(_eepromData.calibrationValue % 10));
                 break;
-            case 2:                                                              // SLEEP: values 0-30 minutes
-                checkButton(&_btnPlus, &_eepromData.sleepTimeout, 1, nowTime);   // ADD button
-                checkButton(&_btnMinus, &_eepromData.sleepTimeout, -1, nowTime); // MINUS button
+            case 2: // SLEEP: values 0-30 minutes
+                checkButton(&_btnPlus, &_eepromData.sleepTimeout, 1, nowTime);
+                checkButton(&_btnMinus, &_eepromData.sleepTimeout, -1, nowTime);
                 if (oldSleepTimeout != _eepromData.sleepTimeout)
                 {
                     _eepromData.sleepTimeout = (_eepromData.sleepTimeout < 1) ? 1 : (_eepromData.sleepTimeout > 30) ? 30 : _eepromData.sleepTimeout;
@@ -115,9 +115,9 @@ void setup_menu()
                 S7C_setDigit(1, _eepromData.sleepTimeout / 10);
                 S7C_setDigit(2, _eepromData.sleepTimeout % 10);
                 break;
-            case 3:                                                                  // DEEP SLEEP: values SLEEP-60 minutes
-                checkButton(&_btnPlus, &_eepromData.deepSleepTimeout, 1, nowTime);   // ADD button
-                checkButton(&_btnMinus, &_eepromData.deepSleepTimeout, -1, nowTime); // MINUS button
+            case 3: // DEEP SLEEP: values SLEEP-60 minutes
+                checkButton(&_btnPlus, &_eepromData.deepSleepTimeout, 1, nowTime);
+                checkButton(&_btnMinus, &_eepromData.deepSleepTimeout, -1, nowTime);
                 _eepromData.deepSleepTimeout = (_eepromData.deepSleepTimeout < _eepromData.sleepTimeout) ? _eepromData.sleepTimeout : (_eepromData.deepSleepTimeout > 60) ? 60 : _eepromData.deepSleepTimeout;
                 if (oldDeepSleepTimeout != _eepromData.deepSleepTimeout)
                 {

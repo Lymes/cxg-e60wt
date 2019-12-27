@@ -89,7 +89,6 @@ void setup()
 
     // EEPROM
     eeprom_read(EEPROM_START_ADDR, &_eepromData, sizeof(_eepromData));
-
     // First launch, eeprom empty OR -button pressed when power the device
     if (_eepromData.heatPoint == 0 || checkButton(&_btnMinus, 0, 0, _sleepTimer))
     {
@@ -102,12 +101,12 @@ void setup()
     }
 
     beepAlarm();
-
     // Press +button when power the device will enter to Setup Menu
     if (checkButton(&_btnPlus, 0, 0, _sleepTimer))
     {
         setup_menu();
     }
+
     // Now we can switch ON the heater at 50%
     PWM_duty(PWM_CH1, 50);
 }
@@ -118,8 +117,9 @@ void mainLoop()
     static uint16_t oldADCVal = 0;
     static uint16_t oldADCUI = 0;
     static uint16_t localCnt = 0;
-    uint8_t displaySymbol = 0;
     static uint16_t oldDisplayValue = 0;
+
+    uint8_t displaySymbol = 0;
     uint32_t nowTime = currentMillis();
 
     // Input power sensor
@@ -214,15 +214,6 @@ void mainLoop()
     delay_ms(1);
 }
 
-void main()
-{
-    setup();
-    while (1)
-    {
-        mainLoop();
-    }
-}
-
 uint8_t checkSleep(uint32_t nowTime)
 {
     static uint8_t oldSensorState = 0;
@@ -259,5 +250,14 @@ void checkPendingDataSave(uint32_t nowTime)
         S7C_setSymbol(3, SYM_SAVE);
         eeprom_write(EEPROM_START_ADDR, &_eepromData, sizeof(_eepromData));
         _haveToSaveData = 0;
+    }
+}
+
+void main()
+{
+    setup();
+    while (1)
+    {
+        mainLoop();
     }
 }
