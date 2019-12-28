@@ -36,33 +36,31 @@
 
 #define MENU_DISPLAY_DELAY 5000
 #define MULTICLICK_TIME 250
+#define MINUS_SYM 0x40
 
 #define MAX_CALIB_VAL 99
 #define MAX_SLEEP_MINS 30
 #define MAX_DEEPSLEEP_MINS 60
 
-extern struct EEPROM_DATA _eepromData;
-
+static uint32_t _menuDisplayTime = 0;
 static char *_menuNames[] = {"SOU", "CAL", "SL1", "SL2"};
 
-static uint32_t _menuDisplayTime = 0;
 extern struct Button _btnPlus;
 extern struct Button _btnMinus;
 extern uint32_t _haveToSaveData;
+extern struct EEPROM_DATA _eepromData;
 
 //
 //  TODO:
 //
 void setup_menu()
 {
-    _menuDisplayTime = currentMillis() + MENU_DISPLAY_DELAY;
-
     int16_t menuIndex = 0;
+    _menuDisplayTime = currentMillis() + MENU_DISPLAY_DELAY;
 
     while (1)
     {
         uint32_t nowTime = currentMillis();
-
         uint8_t menuAction = checkDoubleClick(&_btnPlus, &menuIndex, 1, nowTime) ||
                              checkDoubleClick(&_btnMinus, &menuIndex, -1, nowTime);
         if (menuAction)
@@ -103,7 +101,7 @@ void setup_menu()
                     _eepromData.calibrationValue = (_eepromData.calibrationValue < -MAX_CALIB_VAL) ? -MAX_CALIB_VAL : (_eepromData.calibrationValue > MAX_CALIB_VAL) ? MAX_CALIB_VAL : _eepromData.calibrationValue;
                     _haveToSaveData = nowTime;
                 }
-                S7C_setSymbol(0, _eepromData.calibrationValue < 0 ? 0x40 : 0);
+                S7C_setSymbol(0, _eepromData.calibrationValue < 0 ? MINUS_SYM : 0);
                 S7C_setDigit(1, abs(_eepromData.calibrationValue / 10));
                 S7C_setDigit(2, abs(_eepromData.calibrationValue % 10));
                 break;
