@@ -29,7 +29,8 @@ sudo make install
 ```
 ### To build the firmware
 ```
-cd project_dir
+git clone https://github.com/Lymes/cxg-e60wt.git
+cd cxg-e60wt
 make
 make flash
 ```
@@ -61,4 +62,4 @@ The following additional hardware has been installed:
 - SMD Buzzer:   https://www.aliexpress.com/item/4000043864737.html?spm=a2g0s.9042311.0.0.274233ediyCCli
 
 
-Please feel free to use, modify, add cool new features.  Bye!
+Please feel free to use, modify, add new cool features.  Good luck!
