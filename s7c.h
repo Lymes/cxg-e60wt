@@ -54,17 +54,11 @@ void S7C_begin(uint8_t hardwareConfig, uint8_t numDigitsIn, uint8_t digitPinsIn[
                uint8_t segmentPinsIn[], uint8_t resOnSegmentsIn, uint8_t updateWithDelaysIn,
                uint8_t leadingZerosIn, uint8_t disableDecPoint);
 
-void S7C_setNumber(int numToShow, uint8_t decPlaces, uint8_t hex);
-
-void S7C_setSegments(uint8_t segs[]);
 void S7C_setChars(char str[]);
 void S7C_blank(void);
 void S7C_setSymbol(uint8_t digitNum, uint8_t symbol);
 void S7C_setDigit(uint8_t digitNum, uint8_t symbol);
 
-void S7C_setNewNum(long numToShow, uint8_t decPlaces, uint8_t hex);
-void S7C_findDigits(long numToShow, uint8_t decPlaces, uint8_t hex, uint8_t digits[]);
-void S7C_setDigitCodes(uint8_t nums[], uint8_t decPlaces);
 void S7C_segmentOn(uint8_t segmentNum);
 void S7C_segmentOff(uint8_t segmentNum);
 void S7C_digitOn(uint8_t digitNum);
