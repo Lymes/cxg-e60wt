@@ -35,13 +35,13 @@ make flash
 ```
 
 ## Service Menu
-You can enter to the Service Menu pressing "+" key and Power ON.
+You can enter the Service Menu pressing "+" key and Power ON.
 
 Doble-click on any key will cyclically change the following menu items:
 * SOU: enable/disable sound, values 0..1 (default 1)
 * CAL: calibration value in degrees, range -99..99 (default 0)
 * SL1: sleep value in minutes, range 1..30 (default 3)
-* SL2: DEEP sleep value in minutes, range 1..30 (default 10)
+* SL2: DEEP sleep value in minutes, range 1..60 (default 10)
 
 To exit the Service Menu just switch OFF/ON the soldering iron
 
