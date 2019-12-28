@@ -114,9 +114,9 @@ void setup()
 void mainLoop()
 {
     static uint8_t oldSleep = 0;
-    static uint16_t oldADCVal = 0;
-    static uint16_t oldADCUI = 0;
     static uint16_t localCnt = 0;
+    static uint16_t oldADCUI = 0;
+    static uint16_t oldADCVal = 0;
 
     uint8_t displaySymbol = 0;
     uint32_t nowTime = currentMillis();

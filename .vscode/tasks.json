@@ -1,9 +1,10 @@
 {
+  "version": "2.0.0",
   "tasks": [
     {
-      "label": "Build STM",
+      "label": "Build CXG",
       "type": "process",
-      "command": "${command:stm32-for-vscode.build}",
+      "command": "make",
       "options": {
         "cwd": "${workspaceRoot}"
       },
@@ -16,9 +17,9 @@
       ]
     },
     {
-      "label": "Flash STM",
+      "label": "Flash CXG",
       "type": "process",
-      "command": "${command:stm32-for-vscode.flash}",
+      "command": "make flash",
       "options": {
         "cwd": "${workspaceRoot}"
       },
@@ -29,6 +30,6 @@
       "problemMatcher": [
         "$gcc"
       ]
-    }
+    },
   ]
 }
