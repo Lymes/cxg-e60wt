@@ -76,10 +76,10 @@ void TIM4_init()
     // TIM1_CR1 = 0x01; // Enable timer
     // TIM1_IER = 0x01; // Enable interrupt - update event
 
-    // F = F_CPU / ( 2 * Prescaler * ( 1 + ARR ) )
-    // F = 16 MHz / ( 2 * 64 * ( 1 + 124 ) ) = 1000Hz
+    // F = F_CPU / ( 2 ^ Prescaler * ( 1 + ARR ) )
+    // F = 16 MHz / ( 64 * ( 1 + 249 ) ) = 1000Hz
     TIM4_PSCR = 6;
-    TIM4_ARR = 0x7c;
+    TIM4_ARR = 0xf9;
     TIM4_IER = (1 << TIM4_IER_UIE);
     TIM4_CR1 = (1 << TIM4_CR1_CEN);
 }
