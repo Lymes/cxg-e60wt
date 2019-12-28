@@ -50,7 +50,7 @@ enum
 #define MIN_HEAT 50
 #define MAX_HEAT 450
 #define MAX_ADC_RT 130
-#define MIN_ADC_RT 40
+#define MIN_ADC_RT 35
 
 #define SLEEP_TEMP 100
 #define EEPROM_SAVE_TIMEOUT 2000
@@ -64,6 +64,7 @@ struct EEPROM_DATA _eepromData;
 struct Button _btnPlus = {PB7, 0, 0, 0, 0, 0};
 struct Button _btnMinus = {PB6, 0, 0, 0, 0, 0};
 
+void deepSleep();
 uint8_t checkSleep(uint32_t nowTime);
 void checkHeatPointValidity();
 
@@ -225,6 +226,7 @@ uint8_t checkSleep(uint32_t nowTime)
     }
     else if ((nowTime - _sleepTimer) > _eepromData.deepSleepTimeout * 60000)
     {
+        deepSleep();
         return DEEPSLEEP;
     }
     else if ((nowTime - _sleepTimer) > _eepromData.sleepTimeout * 60000)
@@ -249,6 +251,23 @@ void checkPendingDataSave(uint32_t nowTime)
         S7C_setSymbol(3, SYM_SAVE);
         eeprom_write(EEPROM_START_ADDR, &_eepromData, sizeof(_eepromData));
         _haveToSaveData = 0;
+    }
+}
+
+void deepSleep()
+{
+    static uint16_t localCnt = 0;
+    PWM_duty(PWM_CH1, 100); // set heater OFF
+    // Set blank display
+    S7C_setSymbol(0, 0);
+    S7C_setSymbol(1, 0);
+    S7C_setSymbol(2, 0);
+    while (1)
+    {
+        uint8_t displaySymbol = ((localCnt / 500) % 2) ? SYM_MOON : 0; // 1Hz flashing moon
+        S7C_setSymbol(3, displaySymbol);
+        S7C_refreshDisplay(localCnt++);
+        delay_ms(1);
     }
 }
 

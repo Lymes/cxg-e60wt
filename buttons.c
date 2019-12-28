@@ -30,10 +30,10 @@
 #include <clock.h>
 #include <string.h>
 
-#define DEBOUNCE_TIME 20
-#define MULTICLICK_TIME 250
-#define SHORT_PRESS 700
-#define LONG_PRESS 1800
+#define DEBOUNCE_TIME 10
+#define MULTICLICK_TIME 120
+#define SHORT_PRESS 300
+#define LONG_PRESS 900
 #define FAST_INCREMENT 40
 
 uint8_t checkButton(struct Button *btn, int16_t *value, int8_t increment, uint32_t nowTime)
