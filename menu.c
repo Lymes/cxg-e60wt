@@ -37,6 +37,10 @@
 #define MENU_DISPLAY_DELAY 5000
 #define MULTICLICK_TIME 250
 
+#define MAX_CALIB_VAL 99
+#define MAX_SLEEP_MINS 30
+#define MAX_DEEPSLEEP_MINS 60
+
 extern struct EEPROM_DATA _eepromData;
 
 static char *_menuNames[] = {"SOU", "CAL", "SL1", "SL2"};
@@ -91,34 +95,34 @@ void setup_menu()
                 }
                 S7C_setDigit(2, _eepromData.enableSound);
                 break;
-            case 1: // CALIBRATION: values from -99 to 99
+            case 1: // CALIBRATION: values from -MAX_CALIB_VAL to MAX_CALIB_VAL
                 checkButton(&_btnPlus, &_eepromData.calibrationValue, 1, nowTime);
                 checkButton(&_btnMinus, &_eepromData.calibrationValue, -1, nowTime);
                 if (oldCalibrationValue != _eepromData.calibrationValue)
                 {
-                    _eepromData.calibrationValue = (_eepromData.calibrationValue < -99) ? -99 : (_eepromData.calibrationValue > 99) ? 99 : _eepromData.calibrationValue;
+                    _eepromData.calibrationValue = (_eepromData.calibrationValue < -MAX_CALIB_VAL) ? -MAX_CALIB_VAL : (_eepromData.calibrationValue > MAX_CALIB_VAL) ? MAX_CALIB_VAL : _eepromData.calibrationValue;
                     _haveToSaveData = nowTime;
                 }
                 S7C_setSymbol(0, _eepromData.calibrationValue < 0 ? 0x40 : 0);
                 S7C_setDigit(1, abs(_eepromData.calibrationValue / 10));
                 S7C_setDigit(2, abs(_eepromData.calibrationValue % 10));
                 break;
-            case 2: // SLEEP: values 0-30 minutes
+            case 2: // SLEEP: values 1..MAX_SLEEP_MINS minutes
                 checkButton(&_btnPlus, &_eepromData.sleepTimeout, 1, nowTime);
                 checkButton(&_btnMinus, &_eepromData.sleepTimeout, -1, nowTime);
                 if (oldSleepTimeout != _eepromData.sleepTimeout)
                 {
-                    _eepromData.sleepTimeout = (_eepromData.sleepTimeout < 1) ? 1 : (_eepromData.sleepTimeout > 30) ? 30 : _eepromData.sleepTimeout;
+                    _eepromData.sleepTimeout = (_eepromData.sleepTimeout < 1) ? 1 : (_eepromData.sleepTimeout > MAX_SLEEP_MINS) ? MAX_SLEEP_MINS : _eepromData.sleepTimeout;
                     _haveToSaveData = nowTime;
                 }
                 S7C_setSymbol(0, 0);
                 S7C_setDigit(1, _eepromData.sleepTimeout / 10);
                 S7C_setDigit(2, _eepromData.sleepTimeout % 10);
                 break;
-            case 3: // DEEP SLEEP: values SLEEP-60 minutes
+            case 3: // DEEP SLEEP: values SLEEP..MAX_DEEPSLEEP_MINS minutes
                 checkButton(&_btnPlus, &_eepromData.deepSleepTimeout, 1, nowTime);
                 checkButton(&_btnMinus, &_eepromData.deepSleepTimeout, -1, nowTime);
-                _eepromData.deepSleepTimeout = (_eepromData.deepSleepTimeout < _eepromData.sleepTimeout) ? _eepromData.sleepTimeout : (_eepromData.deepSleepTimeout > 60) ? 60 : _eepromData.deepSleepTimeout;
+                _eepromData.deepSleepTimeout = (_eepromData.deepSleepTimeout < _eepromData.sleepTimeout) ? _eepromData.sleepTimeout : (_eepromData.deepSleepTimeout > MAX_DEEPSLEEP_MINS) ? MAX_DEEPSLEEP_MINS : _eepromData.deepSleepTimeout;
                 if (oldDeepSleepTimeout != _eepromData.deepSleepTimeout)
                 {
                     _haveToSaveData = nowTime;
