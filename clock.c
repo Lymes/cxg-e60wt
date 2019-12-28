@@ -37,17 +37,18 @@ volatile uint8_t _beep1 = 0;
 volatile uint8_t _beep2 = 0;
 volatile uint8_t _duration = 0;
 
-//void TIM1_overflow_handler() __interrupt(11)
 void TIM4_overflow_handler() __interrupt(TIM4_UPD_OVF)
 {
     static uint8_t localCnt = 0;
-    _currentMsecs++;
-    //    TIM1_SR1 &= ~1;
+
+    if (localCnt++ % 2) // 1kHz clock, 1mS
+        _currentMsecs++;
+
     TIM4_SR &= ~1;
 
     if (_beep1 < BEEP_DURATION)
     {
-        if (localCnt++ % 2) // 500Hz
+        if (localCnt % 2) // 500Hz
             PA_ODR ^= (1 << 3);
         _beep1++;
     }
@@ -69,17 +70,10 @@ void TIM4_init()
     PA_CR1 |= (1 << 3); // push-pull mode
     PA_CR2 |= (1 << 3); // push-pull mode
 
-    // TIM1_PSCRH = 0x00; // Configure timer
-    // TIM1_PSCRL = 0x07;
-    // TIM1_ARRH = 0x03;
-    // TIM1_ARRL = 0xe7;
-    // TIM1_CR1 = 0x01; // Enable timer
-    // TIM1_IER = 0x01; // Enable interrupt - update event
-
     // F = F_CPU / ( 2 ^ Prescaler * ( 1 + ARR ) )
-    // F = 16 MHz / ( 64 * ( 1 + 249 ) ) = 1000Hz
+    // F = 16 MHz / ( 64 * ( 1 + 124 ) ) = 2kHz
     TIM4_PSCR = 6;
-    TIM4_ARR = 0xf9;
+    TIM4_ARR = 0x7c;
     TIM4_IER = (1 << TIM4_IER_UIE);
     TIM4_CR1 = (1 << TIM4_CR1_CEN);
 }
