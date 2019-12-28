@@ -117,7 +117,6 @@ void mainLoop()
     static uint16_t oldADCVal = 0;
     static uint16_t oldADCUI = 0;
     static uint16_t localCnt = 0;
-    static uint16_t oldDisplayValue = 0;
 
     uint8_t displaySymbol = 0;
     uint32_t nowTime = currentMillis();
@@ -182,7 +181,7 @@ void mainLoop()
     //   * till _heatPointDisplayTime timeout is reached
     //   * when the current temperature is in range ±10 degrees
     uint8_t tempInRange = (displayVal >= _eepromData.heatPoint - 10) && (displayVal <= _eepromData.heatPoint + 10);
-    if (action || nowTime < _heatPointDisplayTime || tempInRange)
+    if (nowTime < _heatPointDisplayTime || tempInRange)
     {
         displayVal = _eepromData.heatPoint;
         displaySymbol |= SYM_TEMP;
@@ -196,7 +195,7 @@ void mainLoop()
     {
         displaySymbol |= SYM_CELS;
         S7C_setDigit(0, displayVal / 100);
-        S7C_setDigit(1, (displayVal % 100) / 10);
+        S7C_setDigit(1, (displayVal / 10) % 10);
         S7C_setDigit(2, displayVal % 10);
     }
     else
