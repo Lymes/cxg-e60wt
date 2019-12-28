@@ -34,7 +34,7 @@ make
 make flash
 ```
 
-### Service Menu
+## Service Menu
 You can enter to the Service Menu pressing "+" key and Power ON.
 
 Doble-click on any key will cyclically change the following menu items:
@@ -49,7 +49,8 @@ PLEASE NOTE:
 * when in SL1 mode, the soldering iron will keep 100°C
 * to reset to DEFAULT values press "-" key and power ON the device.
 
-## CXG-E60WT Scheme
+
+## CXG-E60WT Schematic diagram
 
 ![CXG-E60WT Scheme](/images/scheme.gif)
 
