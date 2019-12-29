@@ -117,7 +117,7 @@ void mainLoop()
     static uint8_t oldSleep = 0;
     static uint16_t localCnt = 0;
     static uint16_t oldADCUI = 0;
-    static uint16_t oldADCVal = 0;
+    static uint16_t oldADCVal = MIN_ADC_RT;
 
     uint8_t displaySymbol = 0;
     uint32_t nowTime = currentMillis();
@@ -153,6 +153,7 @@ void mainLoop()
     }
 
     // Degrees value
+    adcVal = (adcVal < MIN_ADC_RT) ? MIN_ADC_RT : adcVal;
     int16_t currentDegrees = (MAX_HEAT - MIN_HEAT) * (adcVal - MIN_ADC_RT) / (MAX_ADC_RT - MIN_ADC_RT);
     currentDegrees += _eepromData.calibrationValue;
 
