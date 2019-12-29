@@ -35,14 +35,18 @@
  *  ● Output state enabled for each channel
  *  ● Output compare active low for each channel
  *  ● Preload register enabled for each channel
- *  ● PWM output signal frequency = 2 KHz:
- *      – The timer source clock frequency is 2 MHz (fCPU by default) and the prescaler is
- *        set to 1 to obtain a TIM2 counter clock of 2 MHz.
+ *  ● PWM output signal frequency = 125 Hz:
+ *      – The timer source clock frequency is 16 MHz (fCPU by default) and the prescaler is
+ *        set to 7 to obtain a TIM2 counter clock of 125 kHz  (16000000 / 2^7 = 125000)
  *      – PWM output signal frequency can be set according to the following equation:
  *           PWM output signal frequency = TIM2 counter clock/(TIM2_ARR + 1)
- *           (in our case TIM2_ARR = 999, so PWM output signal frequency is 2 KHz)
+ *           (in our case TIM2_ARR = 999, so PWM output signal frequency is 125 Hz) (125000 / (999 + 1) = 125)
  *  ● PWM mode for each channel. To obtain a different PWM duty cycle value on each channel the TIM2_CCRxx register must be set according to this equation:
- *    Channel x duty cycle = [TIM2_CCRxx/(TIM2_ARR + 1)] * 100
+ *    Channel x duty cycle = [TIM2_CCRxx/(TIM2_ARR + 1)] * 100  
+ *    (CCRXX / (999 + 1)) * 100 = 0.1 * CCRXX, поэтому duty_cycle в функции PWM_duty умножен на 10 (стр. 96)  
+ *
+ *    ПОМНИТЕ: если вы изменили ARR, не забудьте пересчитать CCRXX! Прежде чем изменять значения в этом файле, внимательно прочтите и пймите формулу,
+ *             наче PWM может не завестись, что приведет к 0 на управляющем пине и, следовательно, к неконтролируемому нагреву ТЭНа.
  *  
  *  By default we have:
  *  – Channel 1: TIM2_CCR1x register value is 500, so channel 1 of TIM2 generates a PWM signal with a frequency of 2 KHz and a duty cycle of 50%.
