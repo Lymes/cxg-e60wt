@@ -40,11 +40,12 @@
 #define F_CPU 16000000UL
 #endif
 
-enum
+enum WorkingModes
 {
-    NOSLEEP,
-    SLEEP,
-    DEEPSLEEP
+    NORMAL_MODE,
+    FORCED_MODE,
+    SLEEP_MODE,
+    DEEPSLEEP_MODE
 };
 
 #define MIN_HEAT 50
@@ -52,6 +53,7 @@ enum
 #define MAX_ADC_RT 130
 #define MIN_ADC_RT 35
 
+#define PWM_POWER_OFF 100
 #define SLEEP_TEMP 100
 #define EEPROM_SAVE_TIMEOUT 2000
 #define HEATPOINT_DISPLAY_DELAY 2000
@@ -59,6 +61,7 @@ enum
 uint32_t _haveToSaveData = 0;
 static uint32_t _sleepTimer = 0;
 static uint32_t _heatPointDisplayTime = 0;
+static uint8_t _currentState = NORMAL_MODE;
 
 struct EEPROM_DATA _eepromData;
 struct Button _btnPlus = {PB7, 0, 0, 0, 0, 0};
@@ -115,25 +118,27 @@ void setup()
 
 void mainLoop()
 {
-    static uint8_t forceMode = 0;
-    static uint8_t oldAction = 0;
-    static uint8_t oldSleep = 0;
     static uint16_t localCnt = 0;
-    static uint16_t oldADCUI = 0;
-    static uint16_t oldADCVal = MIN_ADC_RT;
 
     uint8_t displaySymbol = 0;
     uint32_t nowTime = currentMillis();
 
     // Input power sensor
+    static uint16_t oldADCUI = 0;
     uint16_t adcUIn = ADC_read(ADC1_CSR_CH1);
     adcUIn = ((oldADCUI * 7) + adcUIn) >> 3; // noise filter
     oldADCUI = adcUIn;
 
     // Temperature sensor
+    static uint16_t oldADCVal = MIN_ADC_RT;
     uint16_t adcVal = ADC_read(ADC1_CSR_CH0);
     adcVal = ((oldADCVal * 7) + adcVal) >> 3; // noise filter
     oldADCVal = adcVal;
+
+    // Degrees value
+    adcVal = (adcVal < MIN_ADC_RT) ? MIN_ADC_RT : adcVal;
+    int16_t currentDegrees = (MAX_HEAT - MIN_HEAT) * (adcVal - MIN_ADC_RT) / (MAX_ADC_RT - MIN_ADC_RT);
+    currentDegrees += _eepromData.calibrationValue;
 
     // ER1: short on sensor
     // ER2: sensor is broken
@@ -148,27 +153,29 @@ void mainLoop()
         return;
     }
 
-    uint8_t sleep = checkSleep(nowTime);
-    if (oldSleep != sleep)
+    // Check for sleep
+    static uint8_t oldSleepState = 0;
+    uint8_t sleepState = checkSleep(nowTime);
+    if (sleepState != oldSleepState)
     {
         beepAlarm();
-        oldSleep = sleep;
+        _currentState = sleepState;
+        oldSleepState = sleepState;
     }
 
-    // Degrees value
-    adcVal = (adcVal < MIN_ADC_RT) ? MIN_ADC_RT : adcVal;
-    int16_t currentDegrees = (MAX_HEAT - MIN_HEAT) * (adcVal - MIN_ADC_RT) / (MAX_ADC_RT - MIN_ADC_RT);
-    currentDegrees += _eepromData.calibrationValue;
-
+    // Check for buttons
+    static uint8_t oldAction = 0;
     uint16_t oldHeatPoint = _eepromData.heatPoint;
     uint8_t action = checkButton(&_btnPlus, &_eepromData.heatPoint, 1, nowTime) +  // ADD button
                      checkButton(&_btnMinus, &_eepromData.heatPoint, -1, nowTime); // MINUS button
     if (action)
     {
+        // when any buttons were pressed we will display target temperature
         _heatPointDisplayTime = nowTime + HEATPOINT_DISPLAY_DELAY;
-        if (action != oldAction && action > 1)
+        if (action != oldAction && action > 1) // two butons were pressed
         {
-            forceMode = !forceMode;
+            beepAlarm();
+            _currentState = (_currentState == FORCED_MODE) ? NORMAL_MODE : FORCED_MODE;
         }
         if (oldHeatPoint != _eepromData.heatPoint)
         {
@@ -178,31 +185,39 @@ void mainLoop()
     }
     oldAction = action;
 
+    // Set target temperature
+    int16_t targetHeatPoint = 0;
+    switch (_currentState)
+    {
+    case SLEEP_MODE:
+        targetHeatPoint = SLEEP_TEMP;
+        break;
+    case DEEPSLEEP_MODE:
+        targetHeatPoint = 0;
+        break;
+    case FORCED_MODE:
+        targetHeatPoint = _eepromData.heatPoint + _eepromData.forceModeIncrement;
+        targetHeatPoint = targetHeatPoint > MAX_HEAT ? MAX_HEAT : targetHeatPoint;
+        break;
+    case NORMAL_MODE:
+    default:
+        targetHeatPoint = _eepromData.heatPoint;
+    }
+
+    // Setup heater
     // 50 degrees before the heatPoint we start to slow down the heater
     // before that we keep the heater at 50%
     // if the diff is negative, we'll stop the heater
-    int16_t targetHeatPoint = _eepromData.heatPoint;
-    if (forceMode)
-    {
-        displaySymbol |= SYM_FARS;
-        targetHeatPoint += _eepromData.forceModeIncrement;
-        targetHeatPoint = targetHeatPoint > MAX_HEAT ? MAX_HEAT : targetHeatPoint;
-    }
-    if (sleep == SLEEP)
-    {
-        forceMode = false;
-        displaySymbol &= ~SYM_FARS;
-        targetHeatPoint = SLEEP_TEMP;
-    }
     int16_t diff = targetHeatPoint - currentDegrees;
-    int16_t pwmVal = (sleep == DEEPSLEEP || diff < 0) ? 100 : (diff > 50) ? 50 : 90 - diff;
+    int16_t pwmVal = (diff < 0) ? PWM_POWER_OFF : (diff > 50) ? 50 : 90 - diff;
     PWM_duty(PWM_CH1, pwmVal);
 
-    uint16_t displayVal = (currentDegrees < 0) ? 0 : currentDegrees;
+    // Setup display value
     // We will show the current heatPoint
     //   * if any button is pressed
     //   * till _heatPointDisplayTime timeout is reached
     //   * when the current temperature is in range ±10 degrees
+    uint16_t displayVal = (currentDegrees < 0) ? 0 : currentDegrees;
     uint8_t tempInRange = (displayVal >= targetHeatPoint - 10) && (displayVal <= targetHeatPoint + 10);
     if (nowTime < _heatPointDisplayTime || tempInRange)
     {
@@ -211,10 +226,11 @@ void mainLoop()
     }
 
     // Setup status symbol, flashing using local counter overflow
-    displaySymbol |= sleep && ((localCnt / 500) % 2) ? SYM_MOON : 0;      // 1Hz flashing moon
-    displaySymbol |= pwmVal < 100 && ((localCnt / 50) % 2) ? SYM_SUN : 0; // 10Hz flashing heater
+    displaySymbol |= (_currentState >= SLEEP_MODE) && ((localCnt / 500) % 2) ? SYM_MOON : 0; // 1Hz flashing moon
+    displaySymbol |= pwmVal < 100 && ((localCnt / 50) % 2) ? SYM_SUN : 0;                    // 10Hz flashing heater
+    displaySymbol |= (_currentState == FORCED_MODE) ? SYM_FARS : 0;                          // F
 
-    if (sleep != DEEPSLEEP)
+    if (_currentState != DEEPSLEEP_MODE)
     {
         displaySymbol |= SYM_CELS;
         S7C_setDigit(0, displayVal / 100);
@@ -244,18 +260,18 @@ uint8_t checkSleep(uint32_t nowTime)
     {
         _sleepTimer = nowTime;
         oldSensorState = sensorState;
-        return NOSLEEP;
+        return NORMAL_MODE;
     }
     else if ((nowTime - _sleepTimer) > _eepromData.deepSleepTimeout * 60000)
     {
         //deepSleep();
-        return DEEPSLEEP;
+        return DEEPSLEEP_MODE;
     }
     else if ((nowTime - _sleepTimer) > _eepromData.sleepTimeout * 60000)
     {
-        return SLEEP;
+        return SLEEP_MODE;
     }
-    return NOSLEEP;
+    return NORMAL_MODE;
 }
 
 void checkHeatPointValidity()
