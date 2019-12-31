@@ -185,7 +185,8 @@ void mainLoop()
     if (forceMode)
     {
         displaySymbol |= SYM_FARS;
-        targetHeatPoint = (targetHeatPoint + _eepromData.forceModeIncrement) > MAX_HEAT ? MAX_HEAT : targetHeatPoint + _eepromData.forceModeIncrement;
+        targetHeatPoint += _eepromData.forceModeIncrement;
+        targetHeatPoint = targetHeatPoint > MAX_HEAT ? MAX_HEAT : targetHeatPoint;
     }
     if (sleep == SLEEP)
     {
