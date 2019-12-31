@@ -181,12 +181,19 @@ void mainLoop()
     // 50 degrees before the heatPoint we start to slow down the heater
     // before that we keep the heater at 50%
     // if the diff is negative, we'll stop the heater
-    uint16_t targetHeatPoint = _eepromData.heatPoint;
+    int16_t targetHeatPoint = _eepromData.heatPoint;
     if (forceMode)
     {
+        displaySymbol |= SYM_FARS;
         targetHeatPoint = (targetHeatPoint + _eepromData.forceModeIncrement) > MAX_HEAT ? MAX_HEAT : targetHeatPoint + _eepromData.forceModeIncrement;
     }
-    int16_t diff = (sleep == SLEEP) ? SLEEP_TEMP - currentDegrees : targetHeatPoint - currentDegrees;
+    if (sleep == SLEEP)
+    {
+        forceMode = false;
+        displaySymbol &= ~SYM_FARS;
+        targetHeatPoint = SLEEP_TEMP;
+    }
+    int16_t diff = targetHeatPoint - currentDegrees;
     int16_t pwmVal = (sleep == DEEPSLEEP || diff < 0) ? 100 : (diff > 50) ? 50 : 90 - diff;
     PWM_duty(PWM_CH1, pwmVal);
 
@@ -201,7 +208,6 @@ void mainLoop()
         displayVal = targetHeatPoint;
         displaySymbol |= SYM_TEMP;
     }
-    displaySymbol |= forceMode ? SYM_FARS : 0;
 
     // Setup status symbol, flashing using local counter overflow
     displaySymbol |= sleep && ((localCnt / 500) % 2) ? SYM_MOON : 0;      // 1Hz flashing moon
