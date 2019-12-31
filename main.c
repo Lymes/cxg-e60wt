@@ -54,7 +54,7 @@ enum
 
 #define SLEEP_TEMP 100
 #define EEPROM_SAVE_TIMEOUT 2000
-#define HEATPOINT_DISPLAY_DELAY 5000
+#define HEATPOINT_DISPLAY_DELAY 2000
 
 uint32_t _haveToSaveData = 0;
 static uint32_t _sleepTimer = 0;
@@ -91,19 +91,20 @@ void setup()
     // EEPROM
     eeprom_read(EEPROM_START_ADDR, &_eepromData, sizeof(_eepromData));
     // First launch, eeprom empty OR -button pressed when power the device
-    if (_eepromData.heatPoint == 0 || checkButton(&_btnMinus, 0, 0, _sleepTimer))
+    if (_eepromData.heatPoint == 0 || getPin(PB6) == LOW)
     {
         _eepromData.heatPoint = 270;
         _eepromData.enableSound = 1;
         _eepromData.calibrationValue = 0;
-        _eepromData.sleepTimeout = 3;      // 3 min, heatPoint 100C
-        _eepromData.deepSleepTimeout = 10; // 10 min, heatPoint 0
+        _eepromData.sleepTimeout = 3;       // 3 min, heatPoint 100C
+        _eepromData.deepSleepTimeout = 10;  // 10 min, heatPoint 0
+        _eepromData.forceModeIncrement = 0; // 0 degrees
         eeprom_write(EEPROM_START_ADDR, &_eepromData, sizeof(_eepromData));
     }
 
     beepAlarm();
     // Press +button when power the device will enter to Setup Menu
-    if (checkButton(&_btnPlus, 0, 0, _sleepTimer))
+    if (getPin(PB7) == LOW)
     {
         setup_menu();
     }
@@ -114,6 +115,8 @@ void setup()
 
 void mainLoop()
 {
+    static uint8_t forceMode = 0;
+    static uint8_t oldAction = 0;
     static uint8_t oldSleep = 0;
     static uint16_t localCnt = 0;
     static uint16_t oldADCUI = 0;
@@ -157,37 +160,48 @@ void mainLoop()
     int16_t currentDegrees = (MAX_HEAT - MIN_HEAT) * (adcVal - MIN_ADC_RT) / (MAX_ADC_RT - MIN_ADC_RT);
     currentDegrees += _eepromData.calibrationValue;
 
-    // 50 degrees before the heatPoint we start to slow down the heater
-    // before that we keep the heater at 50%
-    // if the diff is negative, we'll stop the heater
-    int16_t diff = (sleep == SLEEP) ? SLEEP_TEMP - currentDegrees : _eepromData.heatPoint - currentDegrees;
-    int16_t pwmVal = (sleep == DEEPSLEEP || diff < 0) ? 100 : (diff > 50) ? 50 : 90 - diff;
-    PWM_duty(PWM_CH1, pwmVal);
-
     uint16_t oldHeatPoint = _eepromData.heatPoint;
-    uint8_t action = checkButton(&_btnPlus, &_eepromData.heatPoint, 1, nowTime) || // ADD button
+    uint8_t action = checkButton(&_btnPlus, &_eepromData.heatPoint, 1, nowTime) +  // ADD button
                      checkButton(&_btnMinus, &_eepromData.heatPoint, -1, nowTime); // MINUS button
     if (action)
     {
         _heatPointDisplayTime = nowTime + HEATPOINT_DISPLAY_DELAY;
+        if (action != oldAction && action > 1)
+        {
+            forceMode = !forceMode;
+        }
         if (oldHeatPoint != _eepromData.heatPoint)
         {
             checkHeatPointValidity();
             _haveToSaveData = nowTime;
         }
     }
+    oldAction = action;
+
+    // 50 degrees before the heatPoint we start to slow down the heater
+    // before that we keep the heater at 50%
+    // if the diff is negative, we'll stop the heater
+    uint16_t targetHeatPoint = _eepromData.heatPoint;
+    if (forceMode)
+    {
+        targetHeatPoint = (targetHeatPoint + _eepromData.forceModeIncrement) > MAX_HEAT ? MAX_HEAT : targetHeatPoint + _eepromData.forceModeIncrement;
+    }
+    int16_t diff = (sleep == SLEEP) ? SLEEP_TEMP - currentDegrees : targetHeatPoint - currentDegrees;
+    int16_t pwmVal = (sleep == DEEPSLEEP || diff < 0) ? 100 : (diff > 50) ? 50 : 90 - diff;
+    PWM_duty(PWM_CH1, pwmVal);
 
     uint16_t displayVal = (currentDegrees < 0) ? 0 : currentDegrees;
     // We will show the current heatPoint
     //   * if any button is pressed
     //   * till _heatPointDisplayTime timeout is reached
     //   * when the current temperature is in range ±10 degrees
-    uint8_t tempInRange = (displayVal >= _eepromData.heatPoint - 10) && (displayVal <= _eepromData.heatPoint + 10);
+    uint8_t tempInRange = (displayVal >= targetHeatPoint - 10) && (displayVal <= targetHeatPoint + 10);
     if (nowTime < _heatPointDisplayTime || tempInRange)
     {
-        displayVal = _eepromData.heatPoint;
+        displayVal = targetHeatPoint;
         displaySymbol |= SYM_TEMP;
     }
+    displaySymbol |= forceMode ? SYM_FARS : 0;
 
     // Setup status symbol, flashing using local counter overflow
     displaySymbol |= sleep && ((localCnt / 500) % 2) ? SYM_MOON : 0;      // 1Hz flashing moon
@@ -227,7 +241,7 @@ uint8_t checkSleep(uint32_t nowTime)
     }
     else if ((nowTime - _sleepTimer) > _eepromData.deepSleepTimeout * 60000)
     {
-        deepSleep();
+        //deepSleep();
         return DEEPSLEEP;
     }
     else if ((nowTime - _sleepTimer) > _eepromData.sleepTimeout * 60000)

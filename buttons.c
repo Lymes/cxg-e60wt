@@ -58,7 +58,10 @@ uint8_t checkButton(struct Button *btn, int16_t *value, int8_t increment, uint32
             btn->lastBounceTime = 0;
             beep();
         }
-        return HIGH;
+        if (nowTime - btn->lastBounceTime > DEBOUNCE_TIME)
+        {
+            return HIGH;
+        }
     }
     else
     {

@@ -34,16 +34,26 @@
 
 #define abs(x) (((x) < 0) ? -(x) : (x))
 
-#define MENU_DISPLAY_DELAY 5000
+#define MENU_DISPLAY_DELAY 1000
 #define MULTICLICK_TIME 250
 #define MINUS_SYM 0x40
 
 #define MAX_CALIB_VAL 99
 #define MAX_SLEEP_MINS 30
 #define MAX_DEEPSLEEP_MINS 60
+#define MAX_FORCE_VAL 100
+
+enum
+{
+    ENABLE_SOUND,
+    CALIBRATION_VAL,
+    SLEEP1_VAL,
+    SLEEP2_VAL,
+    FORCE_VAL,
+};
 
 static uint32_t _menuDisplayTime = 0;
-static char *_menuNames[] = {"SOU", "CAL", "SL1", "SL2"};
+static char *_menuNames[] = {"SOU", "CAL", "SL1", "SL2", "FRC"};
 
 extern struct Button _btnPlus;
 extern struct Button _btnMinus;
@@ -66,7 +76,7 @@ void setup_menu()
         if (menuAction)
         {
             _menuDisplayTime = nowTime + MENU_DISPLAY_DELAY;
-            menuIndex = menuIndex > 3 ? 0 : menuIndex < 0 ? 3 : menuIndex;
+            menuIndex = menuIndex > FORCE_VAL ? 0 : menuIndex < 0 ? FORCE_VAL : menuIndex;
         }
 
         if (nowTime < _menuDisplayTime)
@@ -79,9 +89,10 @@ void setup_menu()
             int16_t oldCalibrationValue = _eepromData.calibrationValue;
             uint16_t oldSleepTimeout = _eepromData.sleepTimeout;
             uint16_t oldDeepSleepTimeout = _eepromData.deepSleepTimeout;
+            uint16_t oldforceModeIncrement = _eepromData.forceModeIncrement;
             switch (menuIndex)
             {
-            case 0: // ENABLE SOUND: values 0 or 1
+            case ENABLE_SOUND: // ENABLE SOUND: values 0 or 1
                 S7C_setSymbol(0, 0);
                 S7C_setSymbol(1, 0);
                 checkButton(&_btnPlus, &_eepromData.enableSound, 1, nowTime);  // ADD button
@@ -93,7 +104,7 @@ void setup_menu()
                 }
                 S7C_setDigit(2, _eepromData.enableSound);
                 break;
-            case 1: // CALIBRATION: values from -MAX_CALIB_VAL to MAX_CALIB_VAL
+            case CALIBRATION_VAL: // CALIBRATION: values from -MAX_CALIB_VAL to MAX_CALIB_VAL
                 checkButton(&_btnPlus, &_eepromData.calibrationValue, 1, nowTime);
                 checkButton(&_btnMinus, &_eepromData.calibrationValue, -1, nowTime);
                 if (oldCalibrationValue != _eepromData.calibrationValue)
@@ -105,7 +116,7 @@ void setup_menu()
                 S7C_setDigit(1, abs(_eepromData.calibrationValue / 10));
                 S7C_setDigit(2, abs(_eepromData.calibrationValue % 10));
                 break;
-            case 2: // SLEEP: values 1..MAX_SLEEP_MINS minutes
+            case SLEEP1_VAL: // SLEEP: values 1..MAX_SLEEP_MINS minutes
                 checkButton(&_btnPlus, &_eepromData.sleepTimeout, 1, nowTime);
                 checkButton(&_btnMinus, &_eepromData.sleepTimeout, -1, nowTime);
                 if (oldSleepTimeout != _eepromData.sleepTimeout)
@@ -117,7 +128,7 @@ void setup_menu()
                 S7C_setDigit(1, _eepromData.sleepTimeout / 10);
                 S7C_setDigit(2, _eepromData.sleepTimeout % 10);
                 break;
-            case 3: // DEEP SLEEP: values SLEEP..MAX_DEEPSLEEP_MINS minutes
+            case SLEEP2_VAL: // DEEP SLEEP: values SLEEP..MAX_DEEPSLEEP_MINS minutes
                 checkButton(&_btnPlus, &_eepromData.deepSleepTimeout, 1, nowTime);
                 checkButton(&_btnMinus, &_eepromData.deepSleepTimeout, -1, nowTime);
                 _eepromData.deepSleepTimeout = (_eepromData.deepSleepTimeout < _eepromData.sleepTimeout) ? _eepromData.sleepTimeout : (_eepromData.deepSleepTimeout > MAX_DEEPSLEEP_MINS) ? MAX_DEEPSLEEP_MINS : _eepromData.deepSleepTimeout;
@@ -128,6 +139,18 @@ void setup_menu()
                 S7C_setSymbol(0, 0);
                 S7C_setDigit(1, _eepromData.deepSleepTimeout / 10);
                 S7C_setDigit(2, _eepromData.deepSleepTimeout % 10);
+                break;
+            case FORCE_VAL: // FORCE MODE INCREMENT: values 0..100 degrees
+                checkButton(&_btnPlus, &_eepromData.forceModeIncrement, 1, nowTime);
+                checkButton(&_btnMinus, &_eepromData.forceModeIncrement, -1, nowTime);
+                _eepromData.forceModeIncrement = _eepromData.forceModeIncrement > MAX_FORCE_VAL ? MAX_FORCE_VAL : _eepromData.forceModeIncrement;
+                if (oldforceModeIncrement != _eepromData.forceModeIncrement)
+                {
+                    _haveToSaveData = nowTime;
+                }
+                S7C_setDigit(0, _eepromData.forceModeIncrement / 100);
+                S7C_setDigit(1, (_eepromData.forceModeIncrement / 10) % 10);
+                S7C_setDigit(2, _eepromData.forceModeIncrement % 10);
                 break;
             default:
                 S7C_setChars("ERR");

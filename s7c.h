@@ -30,6 +30,7 @@
 
 // 4th digit symbols
 #define SYM_CELS 1
+#define SYM_FARS 2
 #define SYM_MOON 8
 #define SYM_SUN 16
 #define SYM_SAVE 32
