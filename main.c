@@ -56,7 +56,7 @@ enum WorkingModes
 #define PWM_POWER_OFF 100
 #define SLEEP_TEMP 100
 #define EEPROM_SAVE_TIMEOUT 2000
-#define HEATPOINT_DISPLAY_DELAY 2000
+#define HEATPOINT_DISPLAY_DELAY 2500
 
 uint32_t _haveToSaveData = 0;
 static uint32_t _sleepTimer = 0;
@@ -79,6 +79,11 @@ void setup()
     disable_interrupts();
     TIM4_init();
     enable_interrupts();
+
+    // Configure mercury sensor and button pins
+    pinMode(PB5, INPUT);
+    pinMode(PB7, INPUT);
+    pinMode(PB7, INPUT);
 
     // Configure 7-segments display
     S7C_init();
@@ -143,7 +148,7 @@ void mainLoop()
     // ER1: short on sensor
     // ER2: sensor is broken
     uint8_t error = (adcVal < 10) ? 1 : (adcVal > 1000) ? 2 : 0;
-    if (error)
+    if (!error)
     {
         PWM_duty(PWM_CH1, 100); // switch OFF the heater
         S7C_setChars("ER");

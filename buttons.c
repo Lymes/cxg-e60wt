@@ -31,7 +31,7 @@
 #include <string.h>
 
 #define DEBOUNCE_TIME 10
-#define MULTICLICK_TIME 120
+#define MULTICLICK_TIME 180
 #define SHORT_PRESS 300
 #define LONG_PRESS 900
 #define FAST_INCREMENT 40

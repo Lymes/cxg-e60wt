@@ -96,7 +96,7 @@ enum PIN
 #define CR1(pin) (_SFR_(PA_BASE_ADDRESS + ((pin) >> 3) * 5 + 0x03))
 #define CR2(pin) (_SFR_(PA_BASE_ADDRESS + ((pin) >> 3) * 5 + 0x04))
 
-#define configure_as_input(pin) (DDR(pin) &= ~(1 << BIT(pin)), CR1(pin) |= (1 << BIT(pin)), CR2(pin) |= (1 << BIT(pin)))
+#define configure_as_input(pin) (DDR(pin) &= ~(1 << BIT(pin)), CR1(pin) |= (1 << BIT(pin)))
 #define configure_as_output(pin) (DDR(pin) |= (1 << BIT(pin)), CR1(pin) |= (1 << BIT(pin)), CR2(pin) |= (1 << BIT(pin)))
 
 #define set_high(pin) (ODR(pin) |= (1 << BIT(pin)))
