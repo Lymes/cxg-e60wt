@@ -34,8 +34,9 @@ void eeprom_unlock()
     {
         FLASH_DUKR = FLASH_DUKR_KEY1;
         FLASH_DUKR = FLASH_DUKR_KEY2;
+        while (!(FLASH_IAPSR & (1 << FLASH_IAPSR_DUL)))
+            ;
     }
-    //while (!(FLASH_IAPSR & (1 << FLASH_IAPSR_DUL)));
 }
 
 void option_bytes_unlock()

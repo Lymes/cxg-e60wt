@@ -43,7 +43,6 @@ inline void delay_ms(uint32_t ms)
 
 inline void delayMicroseconds(uint32_t uS)
 {
-    // delay_ms(uS / 1000);
     volatile uint32_t counter = 7 * uS;
     while (counter--)
         ;
