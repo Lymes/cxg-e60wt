@@ -1,0 +1,15 @@
+*.map 
+*.lk 
+*.cdb 
+*.bin 
+*.asm 
+*.rel 
+*.o 
+*.sym 
+*.lst 
+*.rst
+*.ihx
+*.hex
+obj/
+.DS_Store
+.vscode
