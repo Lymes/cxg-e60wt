@@ -159,7 +159,10 @@ void mainLoop(void)
 
     // Degrees value — use per-tip calibrated ADC range
     adcVal = (adcVal < _eepromData.adcMinRT) ? _eepromData.adcMinRT : adcVal;
-    int16_t currentDegrees = (MAX_HEAT - MIN_HEAT) * (adcVal - _eepromData.adcMinRT) / (_eepromData.adcMaxRT - _eepromData.adcMinRT);
+    // Cast to uint32_t before the multiply: on STM8/SDCC int is 16-bit, so
+    // (MAX_HEAT-MIN_HEAT)*N overflows uint16_t when N>163, silently wrapping
+    // currentDegrees to a small value and defeating the OVH protection check.
+    int16_t currentDegrees = (int16_t)((uint32_t)(MAX_HEAT - MIN_HEAT) * (adcVal - _eepromData.adcMinRT) / (_eepromData.adcMaxRT - _eepromData.adcMinRT));
     currentDegrees += _eepromData.calibrationValue;
 
     // ER1: short on sensor  (ADC well below the calibrated cold point)
