@@ -123,10 +123,11 @@ void setup(void)
         _eepromData.adcMinRT = MIN_ADC_RT;
         _eepromData.adcMaxRT = MAX_ADC_RT;
         eeprom_write(EEPROM_START_ADDR, &_eepromData, sizeof(_eepromData));
+        DBG_PRINTF("EEd\r\n"); // EEPROM defaults written
     }
     // Migration: if new fields are zero (old firmware EEPROM), set defaults
-    if (_eepromData.adcMinRT == 0) _eepromData.adcMinRT = MIN_ADC_RT;
-    if (_eepromData.adcMaxRT == 0) _eepromData.adcMaxRT = MAX_ADC_RT;
+    if (_eepromData.adcMinRT == 0) { _eepromData.adcMinRT = MIN_ADC_RT; DBG_PRINTF("EEm al\r\n"); }
+    if (_eepromData.adcMaxRT == 0) { _eepromData.adcMaxRT = MAX_ADC_RT; DBG_PRINTF("EEm ah\r\n"); }
 
     beepAlarm();
     // Press +button when power the device will enter to Setup Menu
@@ -136,8 +137,11 @@ void setup(void)
     }
 
     uart_init(); // no-op in release; activates PD5/TX in debug builds
-    DBG_PRINTF("CXG boot heatPoint=%d cal=%d\r\n",
-               _eepromData.heatPoint, _eepromData.calibrationValue);
+    // B=boot, hp=heatPoint, c=cal, al=adcMin, ah=adcMax, sl=sleep1, ds=sleep2
+    DBG_PRINTF("B hp=%d c=%d al=%u ah=%u sl=%u ds=%u\r\n",
+               _eepromData.heatPoint, _eepromData.calibrationValue,
+               _eepromData.adcMinRT, _eepromData.adcMaxRT,
+               _eepromData.sleepTimeout, _eepromData.deepSleepTimeout);
 
     // Now we can switch ON the heater at 50%
     PWM_duty(PWM_CH1, 50);
@@ -175,7 +179,16 @@ void mainLoop(void)
     // Debounce: require 500 consecutive bad readings (~500ms) to avoid false
     // errors caused by loose mechanical contact on smaller tips
     static uint16_t errorCount = 0;
+    static uint8_t _dbgRawErr = 0;    // last logged rawError value
+    static uint8_t _dbgErrLogged = 0; // one-shot: confirmed error printed
     uint8_t rawError = (adcVal < (_eepromData.adcMinRT >> 1)) ? 1 : (adcVal > 1000) ? 2 : 0;
+    // Log only on transition: "Er<type> adc=<val>" (Er0 = cleared)
+    if (rawError != _dbgRawErr)
+    {
+        DBG_PRINTF("Er%d adc=%u\r\n", rawError, adcVal);
+        _dbgRawErr = rawError;
+        if (!rawError) _dbgErrLogged = 0; // allow re-log if error re-fires
+    }
     if (rawError)
         errorCount = (errorCount < 500) ? errorCount + 1 : 500;
     else
@@ -183,6 +196,7 @@ void mainLoop(void)
     uint8_t error = (errorCount >= 500) ? rawError : 0;
     if (error)
     {
+        if (!_dbgErrLogged) { DBG_PRINTF("E!%d\r\n", error); _dbgErrLogged = 1; }
         PWM_duty(PWM_CH1, 100); // switch OFF the heater
         S7C_setChars("ER");
         S7C_setDigit(2, error);
@@ -196,6 +210,8 @@ void mainLoop(void)
     uint8_t sleepState = checkSleep(nowTime);
     if (sleepState != oldSleepState)
     {
+        // Sl0=normal,1=forced,2=sleep,3=deepsleep
+        DBG_PRINTF("Sl%d\r\n", sleepState);
         beepAlarm();
         _currentState = sleepState;
         oldSleepState = sleepState;
@@ -216,11 +232,13 @@ void mainLoop(void)
         {
             beepAlarm();
             _currentState = (_currentState == FORCED_MODE) ? NORMAL_MODE : FORCED_MODE;
+            DBG_PRINTF("Fm%d\r\n", _currentState == FORCED_MODE ? 1 : 0);
         }
         if (oldHeatPoint != _eepromData.heatPoint)
         {
             checkHeatPointValidity();
             _haveToSaveData = nowTime;
+            DBG_PRINTF("Sp%d\r\n", _eepromData.heatPoint);
         }
     }
     oldAction = action;
@@ -265,28 +283,36 @@ void mainLoop(void)
                      (diff > 50) ? minPwm :
                      minPwm + (int16_t)((90 - minPwm) * (50 - diff) / 50);
 
-    // Debug: print key control values every 500 ms (no-op in release)
+    // Debug: periodic snapshot every 500 ms (no-op in release)
+    // T=temp S=setpoint e=error mn=minPwm p=pwmVal v=adcVin
     {
         static uint32_t _dbgLast = 0;
         if (nowTime - _dbgLast >= 500)
         {
             _dbgLast = nowTime;
-            DBG_PRINTF("T=%d SP=%d err=%d pwm=%d vin=%u\r\n",
-                       currentDegrees, targetHeatPoint, diff, pwmVal, adcUIn);
+            DBG_PRINTF("T=%d S=%d e=%d mn=%d p=%d v=%u\r\n",
+                       currentDegrees, targetHeatPoint, diff, minPwm, pwmVal, adcUIn);
         }
     }
 
     // --- OVERTEMPERATURE PROTECTION ---
     // Hard limit: temperature exceeded safe maximum
     if (currentDegrees > MAX_SAFE_TEMP)
+    {
+        if (!_overheatFault) DBG_PRINTF("OV%d\r\n", currentDegrees); // one-shot: fault latches
         _overheatFault = 1;
+    }
     // Thermal runaway: heater OFF for too long but still way above target
     // (Q1/IRF840 transistor stuck in conduction)
     static uint32_t _heaterOffStart = 0;
     if (diff < -30)
     {
         if (!_heaterOffStart) _heaterOffStart = nowTime;
-        if ((nowTime - _heaterOffStart) > RUNAWAY_TIMEOUT_MS) _overheatFault = 1;
+        if ((nowTime - _heaterOffStart) > RUNAWAY_TIMEOUT_MS)
+        {
+            if (!_overheatFault) DBG_PRINTF("Rw T=%d\r\n", currentDegrees);
+            _overheatFault = 1;
+        }
     }
     else
     {
@@ -379,6 +405,7 @@ void checkPendingDataSave(uint32_t nowTime)
 {
     if (_haveToSaveData && (nowTime - _haveToSaveData) > EEPROM_SAVE_TIMEOUT)
     {
+        DBG_PRINTF("EEs\r\n");
         S7C_setSymbol(3, SYM_SAVE);
         eeprom_write(EEPROM_START_ADDR, &_eepromData, sizeof(_eepromData));
         _haveToSaveData = 0;
