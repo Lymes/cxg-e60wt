@@ -167,6 +167,7 @@ void mainLoop(void)
     oldADCVal = adcVal;
 
     // Degrees value — use per-tip calibrated ADC range
+    uint16_t adcRaw = adcVal; // raw filtered ADC — saved before clamping for debug
     adcVal = (adcVal < _eepromData.adcMinRT) ? _eepromData.adcMinRT : adcVal;
     // Cast to uint32_t before the multiply: on STM8/SDCC int is 16-bit, so
     // (MAX_HEAT-MIN_HEAT)*N overflows uint16_t when N>163, silently wrapping
@@ -284,14 +285,14 @@ void mainLoop(void)
                      minPwm + (int16_t)((90 - minPwm) * (50 - diff) / 50);
 
     // Debug: periodic snapshot every 500 ms (no-op in release)
-    // T=temp S=setpoint e=error mn=minPwm p=pwmVal v=adcVin
+    // T=temp(C) S=setpoint e=error a=ADC_raw(temp) v=ADC_raw(vin) p=pwmVal
     {
         static uint32_t _dbgLast = 0;
         if (nowTime - _dbgLast >= 500)
         {
             _dbgLast = nowTime;
-            DBG_PRINTF("T=%d S=%d e=%d mn=%d p=%d v=%u\r\n",
-                       currentDegrees, targetHeatPoint, diff, minPwm, pwmVal, adcUIn);
+            DBG_PRINTF("T=%d S=%d e=%d a=%u v=%u p=%d\r\n",
+                       currentDegrees, targetHeatPoint, diff, adcRaw, adcUIn, pwmVal);
         }
     }
 

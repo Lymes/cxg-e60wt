@@ -55,6 +55,57 @@ make
 make flash
 ```
 
+## Debug Build (UART printf on PD5)
+
+A debug build activates a serial trace output on **PD5 (UART1 TX, 115200 8N1, 5V)** with zero impact on the release firmware — all debug code is removed by the preprocessor when `DEBUG` is not defined.
+
+### Hardware
+
+Connect a USB-UART dongle (**5V-compatible** RX, e.g. CH340G with jumper on 5V):
+
+```
+Soldering iron        USB-UART dongle
+──────────────────────────────────────
+CON1 GND   ────────── GND
+CON1 VDD+  ────────── VREF / VCC-IO  (5V)
+MCU PD5    ────────── RX
+```
+
+`CON1` is the ST-Link programming header already on the board. `VDD+` is produced by the on-board **IC3 L05** 5V LDO — safe secondary-side power, isolated from mains.
+
+### Build & flash
+
+```bash
+# Always run 'make clean' when switching between release and debug
+make clean && make debug       # build only
+make clean && make flash-debug # build + flash via ST-Link
+```
+
+### Serial output
+
+Monitor with `screen /dev/tty.usbserial-* 115200` (or any serial terminal).
+
+| Line | When | Fields |
+|---|---|---|
+| `B hp=… c=… al=… ah=… sl=… ds=…` | Boot | heatPoint, calibration, adcMin, adcMax, sleep1/2 timeouts |
+| `T=… S=… e=… a=… v=… p=…` | Every 500 ms | temp°C, setpoint, error, ADC_sensor_raw, ADC_vin_raw, PWM duty |
+| `Sl<n>` | State change | 0=normal, 1=forced, 2=sleep, 3=deepsleep |
+| `Sp<n>` | Button press | new setpoint |
+| `Fm<n>` | Double click | 1=forced ON, 0=forced OFF |
+| `Er<n> adc=…` | Sensor transition | 0=ok, 1=short, 2=open — raw ADC shown |
+| `E!<n>` | Error confirmed (500 ms debounce) | heater OFF |
+| `OV<temp>` | Over-temperature | hard fault latched |
+| `Rw T=…` | Thermal runaway | transistor Q1 stuck |
+| `EEs` | EEPROM write | settings saved |
+| `EEd` | First boot | EEPROM defaults written |
+
+### Build sizes
+
+| Build | Flash used | Free (of 8192 B) |
+|---|---|---|
+| Release | 7129 B | 1063 B |
+| Debug | 7842 B | 350 B |
+
 ## Service Menu
 You can enter the Service Menu pressing "+" key and Power ON.
 
