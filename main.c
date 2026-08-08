@@ -93,6 +93,14 @@ void setup(void)
     TIM4_init();
     enable_interrupts();
 
+    uart_init(); // MUST be after CLK_CKDIVR=0 (BRR calculated for 16MHz, 9600 baud)
+#ifdef DEBUG
+    DBG_PRINTF("B hp=%d c=%d al=%u ah=%u sl=%u ds=%u\r\n",
+               _eepromData.heatPoint, _eepromData.calibrationValue,
+               _eepromData.adcMinRT, _eepromData.adcMaxRT,
+               _eepromData.sleepTimeout, _eepromData.deepSleepTimeout);
+#endif
+
     // Configure mercury sensor and button pins
     pinMode(PB5, INPUT);
     pinMode(PB6, INPUT);
@@ -100,6 +108,15 @@ void setup(void)
 
     // Configure 7-segments display
     S7C_init();
+    // Boot splash: all 8s for 1 second — confirms display is alive
+    S7C_setDigit(0, 8);
+    S7C_setDigit(1, 8);
+    S7C_setDigit(2, 8);
+    S7C_setSymbol(3, 0);
+    {
+        uint16_t i;
+        for (i = 0; i < 1000; i++) { S7C_refreshDisplay(i); delay_ms(1); }
+    }
 
     // Configure PWM
     pinMode(PD4, OUTPUT);
@@ -137,6 +154,7 @@ void setup(void)
     }
 
     uart_init(); // no-op in release; activates PD5/TX in debug builds
+    // (already called at top of setup — repeated call is harmless)
     // B=boot, hp=heatPoint, c=cal, al=adcMin, ah=adcMax, sl=sleep1, ds=sleep2
     DBG_PRINTF("B hp=%d c=%d al=%u ah=%u sl=%u ds=%u\r\n",
                _eepromData.heatPoint, _eepromData.calibrationValue,
@@ -198,6 +216,15 @@ void mainLoop(void)
     if (error)
     {
         if (!_dbgErrLogged) { DBG_PRINTF("E!%d\r\n", error); _dbgErrLogged = 1; }
+        // Periodic print even in error state so UART keeps flowing
+        {
+            static uint32_t _dbgErrLast = 0;
+            if (nowTime - _dbgErrLast >= 500)
+            {
+                _dbgErrLast = nowTime;
+                DBG_PRINTF("ER a=%u v=%u\r\n", adcRaw, adcUIn);
+            }
+        }
         PWM_duty(PWM_CH1, 100); // switch OFF the heater
         S7C_setChars("ER");
         S7C_setDigit(2, error);

@@ -49,6 +49,7 @@
 #define NP_COMMON_ANODE 0
 
 void S7C_init(void);
+void S7C_setLedOnTime(int us); // increase for lower supply voltages (e.g. 3.3V ST-Link)
 
 void S7C_refreshDisplay(uint32_t ticks);
 void S7C_begin(uint8_t hardwareConfig, uint8_t numDigitsIn, uint8_t digitPinsIn[],

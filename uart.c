@@ -83,14 +83,15 @@ void uart_printf(const char *fmt, ...)
 
 // ---------------------------------------------------------------------------
 // uart_init
-// 16 MHz / 115200 = 138.9 → DIV = 139 = 0x008B
+// 16 MHz / 115200 = 138.9 → DIV=139=0x008B  BRR2=0x0B BRR1=0x08
+// 16 MHz /   9600 = 1666  → DIV=1666=0x0682 BRR2=0x02 BRR1=0x68  (more noise-tolerant)
 // BRR2 MUST be written before BRR1 (BRR1 write latches the divider).
 // ---------------------------------------------------------------------------
 
 void uart_init(void)
 {
-    UART1_BRR2 = 0x0B; /* DIV[15:12]=0, DIV[3:0]=0xB */
-    UART1_BRR1 = 0x08; /* DIV[11:4]=0x08              */
+    UART1_BRR2 = 0x02; /* 9600 baud @ 16MHz */
+    UART1_BRR1 = 0x68;
     UART1_CR2  = (1 << UART1_CR2_TEN); /* TX only, no IRQ */
 }
 
