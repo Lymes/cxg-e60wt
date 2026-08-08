@@ -60,6 +60,15 @@ size:
 flash: $(TARGET)
 	stm8flash -c stlinkv2 -p $(MCU) -w $(TARGET)
 
+# Debug build: adds -DDEBUG to enable UART printf on PD5 (115200 8N1).
+# Run 'make clean' first when switching between release and debug builds.
+debug: CFLAGS += -DDEBUG
+debug: all
+
+flash-debug: CFLAGS += -DDEBUG
+flash-debug: all
+	stm8flash -c stlinkv2 -p $(MCU) -w $(TARGET)
+
 serial: $(TARGET)
 	stm8gal -p /dev/ttyUSB0 -w $(TARGET)
 

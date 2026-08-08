@@ -34,6 +34,7 @@
 #include <clock.h>
 #include <menu.h>
 #include <buttons.h>
+#include <uart.h>
 
 #ifndef F_CPU
 #warning "F_CPU not defined, using 16MHz by default"
@@ -133,6 +134,10 @@ void setup(void)
     {
         setup_menu();
     }
+
+    uart_init(); // no-op in release; activates PD5/TX in debug builds
+    DBG_PRINTF("CXG boot heatPoint=%d cal=%d\r\n",
+               _eepromData.heatPoint, _eepromData.calibrationValue);
 
     // Now we can switch ON the heater at 50%
     PWM_duty(PWM_CH1, 50);
@@ -259,6 +264,17 @@ void mainLoop(void)
     int16_t pwmVal = (diff < 0)  ? PWM_POWER_OFF :
                      (diff > 50) ? minPwm :
                      minPwm + (int16_t)((90 - minPwm) * (50 - diff) / 50);
+
+    // Debug: print key control values every 500 ms (no-op in release)
+    {
+        static uint32_t _dbgLast = 0;
+        if (nowTime - _dbgLast >= 500)
+        {
+            _dbgLast = nowTime;
+            DBG_PRINTF("T=%d SP=%d err=%d pwm=%d vin=%u\r\n",
+                       currentDegrees, targetHeatPoint, diff, pwmVal, adcUIn);
+        }
+    }
 
     // --- OVERTEMPERATURE PROTECTION ---
     // Hard limit: temperature exceeded safe maximum
