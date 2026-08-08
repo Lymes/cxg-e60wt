@@ -66,9 +66,19 @@ enum WorkingModes
 // Hard temperature limit: above this the heater element (A1316) can be damaged
 // Triggers immediately, latched until power cycle
 #define MAX_SAFE_TEMP 480
-// Thermal runaway: if heater is commanded OFF but temp stays >target+30°C for this long,
-// transistor Q1 is likely stuck ON
-#define RUNAWAY_TIMEOUT_MS 3000UL
+
+// PID controller gains (integer arithmetic, divided by PID_SCALE for actual gain)
+// Kp=1.5, Ki=0.2/sample, Kd=1.0 — tune to taste
+#define PID_KP         15   // proportional  (×PID_SCALE)
+#define PID_KI          2   // integral/sample (×PID_SCALE)
+#define PID_KD        100   // derivative    (×PID_SCALE) — primary brake against overshoot
+#define PID_SCALE      10
+#define PID_SAMPLE_MS 200   // PID update interval [ms] — long enough for dT to exceed ADC quantization (4°C steps)
+#define PID_IMAX      1000  // anti-windup upper clamp
+#define PID_IMIN      -100  // anti-windup lower clamp
+// Thermal runaway: if heater is commanded OFF but temp stays >target+60°C for this long,
+// transistor Q1 is likely stuck ON. Threshold=60°C accounts for ~40°C thermal inertia overshoot.
+#define RUNAWAY_TIMEOUT_MS 8000UL
 
 uint32_t _haveToSaveData = 0;
 static uint32_t _sleepTimer = 0;
@@ -93,14 +103,6 @@ void setup(void)
     TIM4_init();
     enable_interrupts();
 
-    uart_init(); // MUST be after CLK_CKDIVR=0 (BRR calculated for 16MHz, 9600 baud)
-#ifdef DEBUG
-    DBG_PRINTF("B hp=%d c=%d al=%u ah=%u sl=%u ds=%u\r\n",
-               _eepromData.heatPoint, _eepromData.calibrationValue,
-               _eepromData.adcMinRT, _eepromData.adcMaxRT,
-               _eepromData.sleepTimeout, _eepromData.deepSleepTimeout);
-#endif
-
     // Configure mercury sensor and button pins
     pinMode(PB5, INPUT);
     pinMode(PB6, INPUT);
@@ -108,15 +110,6 @@ void setup(void)
 
     // Configure 7-segments display
     S7C_init();
-    // Boot splash: all 8s for 1 second — confirms display is alive
-    S7C_setDigit(0, 8);
-    S7C_setDigit(1, 8);
-    S7C_setDigit(2, 8);
-    S7C_setSymbol(3, 0);
-    {
-        uint16_t i;
-        for (i = 0; i < 1000; i++) { S7C_refreshDisplay(i); delay_ms(1); }
-    }
 
     // Configure PWM
     pinMode(PD4, OUTPUT);
@@ -131,7 +124,7 @@ void setup(void)
     // First launch, eeprom empty OR -button pressed when power the device
     if (_eepromData.heatPoint == 0 || getPin(PB6) == LOW)
     {
-        _eepromData.heatPoint = 270;
+        _eepromData.heatPoint = 250;
         _eepromData.enableSound = 1;
         _eepromData.calibrationValue = 0;
         _eepromData.sleepTimeout = 3;       // 3 min, heatPoint 100C
@@ -140,13 +133,12 @@ void setup(void)
         _eepromData.adcMinRT = MIN_ADC_RT;
         _eepromData.adcMaxRT = MAX_ADC_RT;
         eeprom_write(EEPROM_START_ADDR, &_eepromData, sizeof(_eepromData));
-        DBG_PRINTF("EEd\r\n"); // EEPROM defaults written
+        (void)0; // EEPROM defaults written
     }
     // Migration: if new fields are zero (old firmware EEPROM), set defaults
-    if (_eepromData.adcMinRT == 0) { _eepromData.adcMinRT = MIN_ADC_RT; DBG_PRINTF("EEm al\r\n"); }
-    if (_eepromData.adcMaxRT == 0) { _eepromData.adcMaxRT = MAX_ADC_RT; DBG_PRINTF("EEm ah\r\n"); }
+    if (_eepromData.adcMinRT == 0) _eepromData.adcMinRT = MIN_ADC_RT;
+    if (_eepromData.adcMaxRT == 0) _eepromData.adcMaxRT = MAX_ADC_RT;
 
-    beepAlarm();
     // Press +button when power the device will enter to Setup Menu
     if (getPin(PB7) == LOW)
     {
@@ -168,6 +160,13 @@ void setup(void)
 void mainLoop(void)
 {
     static uint16_t localCnt = 0;
+
+    // PD controller state
+    static int16_t  _pidPrevError  = 0;
+    static uint32_t _pidLastTime   = 0;
+    static uint8_t  _pidLastState  = 0xFF;
+    static int16_t  pwmVal         = PWM_POWER_OFF;
+    static uint8_t  _pidResetDeriv = 0; // set on setpoint change, cleared in PID block
 
     uint8_t displaySymbol = 0;
     uint32_t nowTime = currentMillis();
@@ -198,16 +197,7 @@ void mainLoop(void)
     // Debounce: require 500 consecutive bad readings (~500ms) to avoid false
     // errors caused by loose mechanical contact on smaller tips
     static uint16_t errorCount = 0;
-    static uint8_t _dbgRawErr = 0;    // last logged rawError value
-    static uint8_t _dbgErrLogged = 0; // one-shot: confirmed error printed
     uint8_t rawError = (adcVal < (_eepromData.adcMinRT >> 1)) ? 1 : (adcVal > 1000) ? 2 : 0;
-    // Log only on transition: "Er<type> adc=<val>" (Er0 = cleared)
-    if (rawError != _dbgRawErr)
-    {
-        DBG_PRINTF("Er%d adc=%u\r\n", rawError, adcVal);
-        _dbgRawErr = rawError;
-        if (!rawError) _dbgErrLogged = 0; // allow re-log if error re-fires
-    }
     if (rawError)
         errorCount = (errorCount < 500) ? errorCount + 1 : 500;
     else
@@ -215,16 +205,7 @@ void mainLoop(void)
     uint8_t error = (errorCount >= 500) ? rawError : 0;
     if (error)
     {
-        if (!_dbgErrLogged) { DBG_PRINTF("E!%d\r\n", error); _dbgErrLogged = 1; }
-        // Periodic print even in error state so UART keeps flowing
-        {
-            static uint32_t _dbgErrLast = 0;
-            if (nowTime - _dbgErrLast >= 500)
-            {
-                _dbgErrLast = nowTime;
-                DBG_PRINTF("ER a=%u v=%u\r\n", adcRaw, adcUIn);
-            }
-        }
+        DBG_PRINTF("E!%d a=%u\r\n", error, adcRaw);
         PWM_duty(PWM_CH1, 100); // switch OFF the heater
         S7C_setChars("ER");
         S7C_setDigit(2, error);
@@ -238,8 +219,6 @@ void mainLoop(void)
     uint8_t sleepState = checkSleep(nowTime);
     if (sleepState != oldSleepState)
     {
-        // Sl0=normal,1=forced,2=sleep,3=deepsleep
-        DBG_PRINTF("Sl%d\r\n", sleepState);
         beepAlarm();
         _currentState = sleepState;
         oldSleepState = sleepState;
@@ -260,13 +239,15 @@ void mainLoop(void)
         {
             beepAlarm();
             _currentState = (_currentState == FORCED_MODE) ? NORMAL_MODE : FORCED_MODE;
-            DBG_PRINTF("Fm%d\r\n", _currentState == FORCED_MODE ? 1 : 0);
         }
         if (oldHeatPoint != _eepromData.heatPoint)
         {
             checkHeatPointValidity();
             _haveToSaveData = nowTime;
             DBG_PRINTF("Sp%d\r\n", _eepromData.heatPoint);
+            // Suppress derivative kick: setpoint step must not look like a
+            // temperature measurement change to the D term.
+            _pidResetDeriv = 1;
         }
     }
     oldAction = action;
@@ -304,18 +285,67 @@ void mainLoop(void)
         minPwm = (pwr >= 100) ? 0 : (int16_t)(100 - (int16_t)pwr);
     }
 
-    // Control law: linear ramp from minPwm (at diff>=50) to 90 (at diff=0), off when overshot
-    // Fixes discontinuity in original formula (90-diff had a jump at diff=50)
+    // PID controller — evaluated every PID_SAMPLE_MS milliseconds.
+    // Positive error = too cold → more heat; negative = too hot → less heat.
+    // Heat output [0..100%] maps to PWM duty (inverted: 100=off, minPwm=full power).
     int16_t diff = targetHeatPoint - currentDegrees;
-    int16_t pwmVal = (diff < 0)  ? PWM_POWER_OFF :
-                     (diff > 50) ? minPwm :
-                     minPwm + (int16_t)((90 - minPwm) * (50 - diff) / 50);
 
-    // Debug: periodic snapshot every 500 ms (no-op in release)
-    // T=temp(C) S=setpoint e=error a=ADC_raw(temp) v=ADC_raw(vin) p=pwmVal
+    // On mode transition reset derivative state to avoid kick
+    if (_currentState != _pidLastState)
+    {
+        _pidPrevError = diff;
+        _pidLastState = _currentState;
+    }
+
+    if (nowTime - _pidLastTime >= PID_SAMPLE_MS)
+    {
+        _pidLastTime = nowTime;
+
+        if (_pidResetDeriv) { _pidPrevError = diff; _pidResetDeriv = 0; }
+
+        int16_t derivative = diff - _pidPrevError;
+        _pidPrevError = diff;
+
+        if (diff <= 0)
+        {
+            // Over or at setpoint: cut off immediately.
+            // Still update _pidPrevError so the derivative is correct
+            // when re-entering the positive zone after an overshoot.
+            _pidPrevError = diff;
+            pwmVal = PWM_POWER_OFF;
+        }
+        else
+        {
+            // PD controller:
+            //   P — reduces heat proportionally as target approaches
+            //   D — brakes when temperature is rising fast (negative derivative)
+            //       anticipates crossing and cuts early without needing to measure overshoot
+            int32_t heatScaled = (int32_t)PID_KP * diff
+                               + (int32_t)PID_KD * derivative;
+            int16_t heatPct = (int16_t)(heatScaled / PID_SCALE);
+            if (heatPct > 100) heatPct = 100;
+            if (heatPct <   0) heatPct =   0;
+
+            // Power taper: cap max heat proportionally to distance from target.
+            // Floor of 15% ensures enough power to overcome thermal losses at
+            // steady state — without it the iron stalls below setpoint.
+            // At diff=50 → 65% max, diff=10 → 25%, diff=0 → cut off (diff<=0 branch above).
+            {
+                int16_t maxHeat = diff + 15;
+                if (heatPct > maxHeat) heatPct = maxHeat;
+            }
+
+            pwmVal = (int16_t)(100 - (int32_t)heatPct * (100 - minPwm) / 100);
+            if (pwmVal < minPwm)        pwmVal = minPwm;
+            if (pwmVal > PWM_POWER_OFF) pwmVal = PWM_POWER_OFF;
+        }
+    }
+
+    // Debug: periodic snapshot every 200 ms (no-op in release)
+    // T=temp S=setpoint e=error d=derivative a=ADC_raw(temp) v=ADC_raw(vin) p=pwmVal
     {
         static uint32_t _dbgLast = 0;
-        if (nowTime - _dbgLast >= 500)
+        if (nowTime - _dbgLast >= 200)
         {
             _dbgLast = nowTime;
             DBG_PRINTF("T=%d S=%d e=%d a=%u v=%u p=%d\r\n",
@@ -333,7 +363,7 @@ void mainLoop(void)
     // Thermal runaway: heater OFF for too long but still way above target
     // (Q1/IRF840 transistor stuck in conduction)
     static uint32_t _heaterOffStart = 0;
-    if (diff < -30)
+    if (diff < -60)
     {
         if (!_heaterOffStart) _heaterOffStart = nowTime;
         if ((nowTime - _heaterOffStart) > RUNAWAY_TIMEOUT_MS)
@@ -357,7 +387,13 @@ void mainLoop(void)
     }
     // --- END OVERTEMPERATURE PROTECTION ---
 
-    PWM_duty(PWM_CH1, pwmVal);
+    // Re-clamp minPwm here: pwmVal is updated every PID_SAMPLE_MS but minPwm
+    // is recalculated every ms from live adcUIn — enforce voltage limit at callsite.
+    {
+        int16_t safeVal = pwmVal;
+        if (safeVal < minPwm) safeVal = minPwm;
+        PWM_duty(PWM_CH1, safeVal);
+    }
 
     // Setup display value
     // We will show the current heatPoint
@@ -433,7 +469,6 @@ void checkPendingDataSave(uint32_t nowTime)
 {
     if (_haveToSaveData && (nowTime - _haveToSaveData) > EEPROM_SAVE_TIMEOUT)
     {
-        DBG_PRINTF("EEs\r\n");
         S7C_setSymbol(3, SYM_SAVE);
         eeprom_write(EEPROM_START_ADDR, &_eepromData, sizeof(_eepromData));
         _haveToSaveData = 0;
