@@ -63,14 +63,13 @@ A debug build activates a serial trace output on **PD5 (UART1 TX, 115200 8N1, 5V
 
 ### Hardware
 
-The PCB has two sides — the display side and the component side where the programming header CON1 is exposed.
 > Before opening the handle, remove the rubber button caps first.
 
 ![PCB display side](/images/screen2.jpeg)
 
 ![PCB component side — CON1, mercury switch, buzzer](/images/screen3.jpeg)
 
-Connect a USB-UART dongle (**5V-compatible** RX, e.g. CH340G with jumper on 5V):
+Connect a USB-UART adapter (**5V-compatible** RX) to CON1. Any adapter works — the CH340N SOP-8 shown here was just what happened to be in the drawer:
 
 ```
 Soldering iron        USB-UART dongle (CH340N SOP-8)
