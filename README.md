@@ -1,7 +1,6 @@
 # CXG-E60WT Soldering Iron firmware (STM8S103K3)
 
 ![CXG-E60WT soldering iron](/images/screen1.jpeg)
-> Before opening the handle, remove the rubber button caps first.
 
 A firmware for the CXG-E60WT soldering iron with STM8S103K3 MCU. Features sleep/wake-up modes, buzzer, error detection, per-tip ADC calibration, mains voltage compensation (110V/220V), overtemperature protection, and a **proportional-derivative (PD) controller with power taper** for accurate, overshoot-free temperature regulation.
 
@@ -64,7 +63,8 @@ A debug build activates a serial trace output on **PD5 (UART1 TX, 115200 8N1, 5V
 
 ### Hardware
 
-The PCB has two sides — the display side and the component side where the programming header CON1 is exposed:
+The PCB has two sides — the display side and the component side where the programming header CON1 is exposed.
+> Before opening the handle, remove the rubber button caps first.
 
 ![PCB display side](/images/screen2.jpeg)
 
