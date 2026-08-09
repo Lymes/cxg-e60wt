@@ -101,8 +101,8 @@ Monitor with `minicom -o -D /dev/cu.usbserial-* -b 115200` (or any serial termin
 
 | Build | Flash used | Free (of 8192 B) |
 |---|---|---|
-| Release | ~7200 B | ~992 B |
-| Debug | ~7942 B | ~250 B |
+| Release | ~6902 B | ~1290 B |
+| Debug | ~7535 B | ~657 B |
 
 ## Service Menu
 You can enter the Service Menu pressing "+" key and Power ON.
@@ -155,7 +155,7 @@ The ±3-4°C steady-state band is the resolution limit of the 10-bit ADC with th
 
 The firmware includes two independent hardware protection layers:
 * **Hard limit (480°C)**: if the measured temperature exceeds 480°C the heater is switched OFF immediately, the display shows **OVH** and the fault is latched until power cycle
-* **Thermal runaway**: if the heater is commanded OFF but the temperature remains more than 60°C above target for 8 seconds (indicating a stuck transistor Q1/IRF840), the same OVH fault is triggered
+* **Thermal runaway**: if the heater is commanded OFF but the temperature **rises** more than 60°C above target for 8 consecutive seconds (indicating a stuck transistor Q1/IRF840), the same OVH fault is triggered. Natural cooling (temperature stable or falling) never trips this check.
 
 ## Mains Voltage Compensation (110V / 220V)
 

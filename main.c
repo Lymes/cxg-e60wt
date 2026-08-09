@@ -70,12 +70,9 @@ enum WorkingModes
 // PID controller gains (integer arithmetic, divided by PID_SCALE for actual gain)
 // Kp=1.5, Ki=0.2/sample, Kd=1.0 — tune to taste
 #define PID_KP         60   // proportional  (×PID_SCALE) — must be high enough to overcome
-#define PID_KI          2   // integral/sample (×PID_SCALE)
 #define PID_KD        100   // derivative    (×PID_SCALE) — primary brake against overshoot
 #define PID_SCALE      10
 #define PID_SAMPLE_MS 200   // PID update interval [ms] — long enough for dT to exceed ADC quantization (4°C steps)
-#define PID_IMAX      1000  // anti-windup upper clamp
-#define PID_IMIN      -100  // anti-windup lower clamp
 // Thermal runaway: if heater is commanded OFF but temp stays >target+60°C for this long,
 // transistor Q1 is likely stuck ON. Threshold=60°C accounts for ~40°C thermal inertia overshoot.
 #define RUNAWAY_TIMEOUT_MS 8000UL
@@ -90,7 +87,7 @@ struct EEPROM_DATA _eepromData;
 struct Button _btnPlus  = {PB7, 0, 0, 0, 0, 0, 0};
 struct Button _btnMinus = {PB6, 0, 0, 0, 0, 0, 0};
 
-void deepSleep(void);
+static uint16_t _adcRange = MAX_ADC_RT - MIN_ADC_RT; // calibrated ADC range, updated from EEPROM in setup()
 uint8_t checkSleep(uint32_t nowTime);
 void checkHeatPointValidity(void);
 
@@ -138,6 +135,7 @@ void setup(void)
     // Migration: if new fields are zero (old firmware EEPROM), set defaults
     if (_eepromData.adcMinRT == 0) _eepromData.adcMinRT = MIN_ADC_RT;
     if (_eepromData.adcMaxRT == 0) _eepromData.adcMaxRT = MAX_ADC_RT;
+    _adcRange = _eepromData.adcMaxRT - _eepromData.adcMinRT;
 
     // Press +button when power the device will enter to Setup Menu
     if (getPin(PB7) == LOW)
@@ -167,6 +165,8 @@ void mainLoop(void)
     static uint8_t  _pidLastState  = 0xFF;
     static int16_t  pwmVal         = PWM_POWER_OFF;
     static uint8_t  _pidResetDeriv = 0; // set on setpoint change, cleared in PID block
+    static int16_t  minPwm         = 50; // voltage compensation, updated every PID_SAMPLE_MS
+    static uint32_t _heaterOffStart = 0; // runaway timer start; reset on mode change
 
     uint8_t displaySymbol = 0;
     uint32_t nowTime = currentMillis();
@@ -189,7 +189,7 @@ void mainLoop(void)
     // Cast to uint32_t before the multiply: on STM8/SDCC int is 16-bit, so
     // (MAX_HEAT-MIN_HEAT)*N overflows uint16_t when N>163, silently wrapping
     // currentDegrees to a small value and defeating the OVH protection check.
-    int16_t currentDegrees = (int16_t)((uint32_t)(MAX_HEAT - MIN_HEAT) * (adcVal - _eepromData.adcMinRT) / (_eepromData.adcMaxRT - _eepromData.adcMinRT));
+    int16_t currentDegrees = (int16_t)((uint32_t)(MAX_HEAT - MIN_HEAT) * (adcVal - _eepromData.adcMinRT) / _adcRange);
     currentDegrees += _eepromData.calibrationValue;
 
     // ER1: short on sensor  (ADC well below the calibrated cold point)
@@ -271,35 +271,34 @@ void mainLoop(void)
         targetHeatPoint = _eepromData.heatPoint;
     }
 
-    // Setup heater with voltage compensation
-    // Power delivered: P = (100-pwmVal)/100 * Vdc^2 / R
-    // To keep constant max power regardless of mains voltage (110V or 220V):
-    //   minPwm = 100 - 50 * (ADC_220 / adcUIn)^2
-    // At 220V (ADC≈673): minPwm=50  (50% power cap, as original)
-    // At 110V (ADC≈337): minPwm=0   (100% power, full on)
-    int16_t minPwm = 50; // default for 220V in case adcUIn not yet stable
-    if (adcUIn > 10)
-    {
-        uint32_t pwr = (ADC_NOMINAL_220V * ADC_NOMINAL_220V * 50UL) /
-                       ((uint32_t)adcUIn * (uint32_t)adcUIn);
-        minPwm = (pwr >= 100) ? 0 : (int16_t)(100 - (int16_t)pwr);
-    }
-
     // PID controller — evaluated every PID_SAMPLE_MS milliseconds.
     // Positive error = too cold → more heat; negative = too hot → less heat.
     // Heat output [0..100%] maps to PWM duty (inverted: 100=off, minPwm=full power).
     int16_t diff = targetHeatPoint - currentDegrees;
 
-    // On mode transition reset derivative state to avoid kick
+    // On mode transition reset derivative state and runaway timer to avoid false fault
+    // (e.g. entering deep sleep with a hot iron: setpoint drops to 0 but iron needs
+    // minutes to cool — without this reset the 8s runaway would trip immediately).
     if (_currentState != _pidLastState)
     {
         _pidPrevError = diff;
         _pidLastState = _currentState;
+        _heaterOffStart = 0;
     }
 
     if (nowTime - _pidLastTime >= PID_SAMPLE_MS)
     {
         _pidLastTime = nowTime;
+
+        // Voltage compensation: mains voltage is stable; 200ms update is sufficient.
+        // P = (100-pwm)/100 * Vdc^2/R — cap max power at 220V, allow full power at 110V.
+        // At 220V (ADC≈673): minPwm=50.  At 110V (ADC≈337): minPwm=0.
+        if (adcUIn > 10)
+        {
+            uint32_t pwr = (ADC_NOMINAL_220V * ADC_NOMINAL_220V * 50UL) /
+                           ((uint32_t)adcUIn * (uint32_t)adcUIn);
+            minPwm = (pwr >= 100) ? 0 : (int16_t)(100 - (int16_t)pwr);
+        }
 
         if (_pidResetDeriv) { _pidPrevError = diff; _pidResetDeriv = 0; }
 
@@ -360,16 +359,41 @@ void mainLoop(void)
         if (!_overheatFault) DBG_PRINTF("OV%d\r\n", currentDegrees); // one-shot: fault latches
         _overheatFault = 1;
     }
-    // Thermal runaway: heater OFF for too long but still way above target
-    // (Q1/IRF840 transistor stuck in conduction)
-    static uint32_t _heaterOffStart = 0;
+    // Thermal runaway: heater OFF but temperature RISING → Q1/IRF840 transistor stuck.
+    // Logic:
+    //   • baseline = temperature when the window starts (or last time T fell)
+    //   • if T falls below baseline → iron is cooling, slide baseline down, reset clock
+    //   • if 8s elapses AND T rose above baseline → genuine stuck transistor → fault
+    //   • if 8s elapses AND T unchanged → very slow cooling (ADC quantization); extend window
+    // A stuck IRF840 drives full ~60W so T will rise several °C/s — easily caught.
+    // Natural cooling can legitimately hold one ADC step (4°C) for >8s; we must not fault.
+    static int16_t _runawayBaseTemp = 0;
     if (diff < -60)
     {
-        if (!_heaterOffStart) _heaterOffStart = nowTime;
-        if ((nowTime - _heaterOffStart) > RUNAWAY_TIMEOUT_MS)
+        if (!_heaterOffStart)
         {
-            if (!_overheatFault) DBG_PRINTF("Rw T=%d\r\n", currentDegrees);
-            _overheatFault = 1;
+            _heaterOffStart = nowTime;
+            _runawayBaseTemp = currentDegrees;
+        }
+        else if (currentDegrees < _runawayBaseTemp)
+        {
+            // Temperature fell — iron is cooling; slide window forward
+            _heaterOffStart = nowTime;
+            _runawayBaseTemp = currentDegrees;
+        }
+        else if ((nowTime - _heaterOffStart) > RUNAWAY_TIMEOUT_MS)
+        {
+            if (currentDegrees > _runawayBaseTemp)
+            {
+                // Temperature rose during the window — transistor Q1 is stuck ON
+                if (!_overheatFault) DBG_PRINTF("Rw T=%d\r\n", currentDegrees);
+                _overheatFault = 1;
+            }
+            else
+            {
+                // Temperature unchanged — ADC quantization during slow cooling; extend window
+                _heaterOffStart = nowTime;
+            }
         }
     }
     else
@@ -447,7 +471,6 @@ uint8_t checkSleep(uint32_t nowTime)
     }
     else if ((nowTime - _sleepTimer) > (uint32_t)_eepromData.deepSleepTimeout * 60000UL)
     {
-        //deepSleep();
         return DEEPSLEEP_MODE;
     }
     else if ((nowTime - _sleepTimer) > (uint32_t)_eepromData.sleepTimeout * 60000UL)
@@ -472,23 +495,6 @@ void checkPendingDataSave(uint32_t nowTime)
         S7C_setSymbol(3, SYM_SAVE);
         eeprom_write(EEPROM_START_ADDR, &_eepromData, sizeof(_eepromData));
         _haveToSaveData = 0;
-    }
-}
-
-void deepSleep(void)
-{
-    static uint16_t localCnt = 0;
-    PWM_duty(PWM_CH1, 100); // set heater OFF
-    // Set blank display
-    S7C_setSymbol(0, 0);
-    S7C_setSymbol(1, 0);
-    S7C_setSymbol(2, 0);
-    while (1)
-    {
-        uint8_t displaySymbol = ((localCnt / 500) % 2) ? SYM_MOON : 0; // 1Hz flashing moon
-        S7C_setSymbol(3, displaySymbol);
-        S7C_refreshDisplay(localCnt++);
-        delay_ms(1);
     }
 }
 

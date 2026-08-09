@@ -32,28 +32,6 @@
 #define PERIOD_IDX 38
 #define ASTERISK_IDX 39
 
-static const long powersOf10[] = {
-    1, // 10^0
-    10,
-    100,
-    1000,
-    10000,
-    100000,
-    1000000,
-    10000000,
-    100000000,
-    1000000000}; // 10^9
-
-static const long powersOf16[] = {
-    0x1, // 16^0
-    0x10,
-    0x100,
-    0x1000,
-    0x10000,
-    0x100000,
-    0x1000000,
-    0x10000000}; // 16^7
-
 // digitCodeMap indicate which segments must be illuminated to display
 // each number.
 static const uint8_t digitCodeMap[] = {
@@ -108,19 +86,14 @@ const uint8_t *const alphaCodes = digitCodeMap + 10;
 /******************************************************************************/
 
 static uint8_t digitOnVal, digitOffVal, segmentOnVal, segmentOffVal;
-static uint8_t resOnSegments = 0, updateWithDelays = 0, leadingZeros;
 static uint8_t digitPins[MAXNUMDIGITS];
 static uint8_t segmentPins[8];
 static uint8_t numDigits = 4;
 static uint8_t numSegments;
-static uint8_t prevUpdateIdx = 0;        // The previously updated segment or digit
 static uint8_t digitCodes[MAXNUMDIGITS]; // The active setting of each segment of each digit
-static uint32_t prevUpdateTime = 0;      // The time (millis()) when the display was last updated
 static int ledOnTime = 10;               // The time (us) to wait with LEDs on
 
 void S7C_setLedOnTime(int us) { ledOnTime = us; }
-static int waitOffTime = 0;              // The time (us) to wait with LEDs off
-static uint8_t waitOffActive = 0;        // Whether  the program is waiting with LEDs off
 
 void S7C_init(void)
 {
@@ -148,10 +121,9 @@ void S7C_begin(uint8_t hardwareConfig, uint8_t numDigitsIn, uint8_t digitPinsIn[
                uint8_t segmentPinsIn[], uint8_t resOnSegmentsIn,
                uint8_t updateWithDelaysIn, uint8_t leadingZerosIn, uint8_t disableDecPoint)
 {
-
-  resOnSegments = resOnSegmentsIn;
-  updateWithDelays = updateWithDelaysIn;
-  leadingZeros = leadingZerosIn;
+  (void)resOnSegmentsIn;   // always false — resistors on digit pins
+  (void)updateWithDelaysIn; // always true  — blocking delay mode
+  (void)leadingZerosIn;    // not used in this display driver
 
   numDigits = numDigitsIn;
   numSegments = disableDecPoint ? 7 : 8; // Ternary 'if' statement
@@ -215,144 +187,17 @@ void S7C_begin(uint8_t hardwareConfig, uint8_t numDigitsIn, uint8_t digitPinsIn[
 
 // refreshDisplay
 /******************************************************************************/
-// Turns on the segments specified in 'digitCodes[]'
-// There are 4 versions of this function, with the choice depending on the
-// location of the current-limiting resistors, and whether or not you wish to
-// use 'update delays' (the standard method until 2017).
-// For resistors on *digits* we will cycle through all 8 segments (7 + period),
-//    turning on the *digits* as appropriate for a given segment, before moving on
-//    to the next segment.
-// For resistors on *segments* we will cycle through all __ # of digits,
-//    turning on the *segments* as appropriate for a given digit, before moving on
-//    to the next digit.
-// If using update delays, refreshDisplay has a delay between each digit/segment
-//    as it cycles through. It exits with all LEDs off.
-// If not using updateDelays, refreshDisplay exits with a single digit/segment
-//    on. It will move to the next digit/segment after being called again (if
-//    enough time has passed).
-
+// Hardware is always configured: resistors on digit pins, update with delays
+// (updateWithDelays=true, resOnSegments=false — fixed by S7C_init()).
+// Cycles through all segments, briefly illuminating the required digit pins.
 void S7C_refreshDisplay(uint32_t us)
 {
-
-  if (!updateWithDelays)
+  (void)us;
+  for (uint8_t segmentNum = 0; segmentNum < numSegments; segmentNum++)
   {
-    // Exit if it's not time for the next display change
-    if (waitOffActive)
-    {
-      if (us - prevUpdateTime < waitOffTime)
-        return;
-    }
-    else
-    {
-      if (us - prevUpdateTime < ledOnTime)
-        return;
-    }
-    prevUpdateTime = us;
-
-    if (!resOnSegments)
-    {
-      /**********************************************/
-      // RESISTORS ON DIGITS, UPDATE WITHOUT DELAYS
-
-      if (waitOffActive)
-      {
-        waitOffActive = false;
-      }
-      else
-      {
-        // Turn all lights off for the previous segment
-        S7C_segmentOff(prevUpdateIdx);
-
-        if (waitOffTime)
-        {
-          // Wait a delay with all lights off
-          waitOffActive = true;
-          return;
-        }
-      }
-
-      prevUpdateIdx++;
-      if (prevUpdateIdx >= numSegments)
-        prevUpdateIdx = 0;
-
-      // Illuminate the required digits for the new segment
-      S7C_segmentOn(prevUpdateIdx);
-    }
-    else
-    {
-      /**********************************************/
-      // RESISTORS ON SEGMENTS, UPDATE WITHOUT DELAYS
-
-      if (waitOffActive)
-      {
-        waitOffActive = false;
-      }
-      else
-      {
-        // Turn all lights off for the previous digit
-        S7C_digitOff(prevUpdateIdx);
-
-        if (waitOffTime)
-        {
-          // Wait a delay with all lights off
-          waitOffActive = true;
-          return;
-        }
-      }
-
-      prevUpdateIdx++;
-      if (prevUpdateIdx >= numDigits)
-        prevUpdateIdx = 0;
-
-      // Illuminate the required segments for the new digit
-      S7C_digitOn(prevUpdateIdx);
-    }
-  }
-
-  else
-  {
-    if (!resOnSegments)
-    {
-      /**********************************************/
-      // RESISTORS ON DIGITS, UPDATE WITH DELAYS
-      for (uint8_t segmentNum = 0; segmentNum < numSegments; segmentNum++)
-      {
-
-        // Illuminate the required digits for this segment
-        S7C_segmentOn(segmentNum);
-
-        // Wait with lights on (to increase brightness)
-        delayMicroseconds(ledOnTime);
-
-        // Turn all lights off
-        S7C_segmentOff(segmentNum);
-
-        // Wait with all lights off if required
-        if (waitOffTime)
-          delayMicroseconds(waitOffTime);
-      }
-    }
-    else
-    {
-      /**********************************************/
-      // RESISTORS ON SEGMENTS, UPDATE WITH DELAYS
-      for (uint8_t digitNum = 0; digitNum < numDigits; digitNum++)
-      {
-
-        // Illuminate the required segments for this digit
-        S7C_digitOn(digitNum);
-
-        // Wait with lights on (to increase brightness)
-        delayMicroseconds(ledOnTime);
-
-        // Turn all lights off
-        S7C_digitOff(digitNum);
-
-        // Wait with all lights off if required
-        if (waitOffTime)
-          delayMicroseconds(waitOffTime);
-      }
-    }
+    S7C_segmentOn(segmentNum);
+    delayMicroseconds(ledOnTime);
+    S7C_segmentOff(segmentNum);
   }
 }
 
