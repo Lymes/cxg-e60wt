@@ -1,5 +1,8 @@
 # CXG-E60WT Soldering Iron firmware (STM8S103K3)
 
+![CXG-E60WT soldering iron](/images/screen1.jpeg)
+> Before opening the handle, remove the rubber button caps first.
+
 A firmware for the CXG-E60WT soldering iron with STM8S103K3 MCU. Features sleep/wake-up modes, buzzer, error detection, per-tip ADC calibration, mains voltage compensation (110V/220V), overtemperature protection, and a **proportional-derivative (PD) controller with power taper** for accurate, overshoot-free temperature regulation.
 
 For those who want to re-build the firmware you'll need two tools:
@@ -61,6 +64,12 @@ A debug build activates a serial trace output on **PD5 (UART1 TX, 115200 8N1, 5V
 
 ### Hardware
 
+The PCB has two sides — the display side and the component side where the programming header CON1 is exposed:
+
+![PCB display side](/images/screen2.jpeg)
+
+![PCB component side — CON1, mercury switch, buzzer](/images/screen3.jpeg)
+
 Connect a USB-UART dongle (**5V-compatible** RX, e.g. CH340G with jumper on 5V):
 
 ```
@@ -71,10 +80,16 @@ CON1 VDD+  ────────── Pin 5 (VCC, 5V)
 MCU PD5    ────────── Pin 7 (RXD) ← confirmed on CH340N SOP-8
 ```
 
+<img src="/images/screen5.jpeg" width="260" align="right">
+
 > **Note:** on the CH340N SOP-8 package, RXD is pin 7 and TXD is pin 6
 > (opposite of many breakout boards). Verify with your specific module.
 
 `CON1` is the ST-Link programming header already on the board. `VDD+` is produced by the on-board **IC3 L05** 5V LDO — safe secondary-side power, isolated from mains.
+
+For the ST-Link V2, use the **left row** of pins for STM8 (SWIM + RST + GND + VDC 5V):
+
+![ST-Link V2 — use left row for STM8](/images/screen4.jpeg)
 
 ### Build & flash
 
@@ -162,36 +177,6 @@ The firmware includes two independent hardware protection layers:
 The R14/R16 voltage divider feeds the DC bus voltage to ADC CH1. The firmware automatically scales the maximum heater power to maintain constant thermal output regardless of mains voltage (110V or 220V AC), with no manual configuration required.
 
 
-## Photos
-
-### CXG-E60WT soldering iron
-> Before opening, remove the rubber buttons from the handle.
-
-![CXG-E60WT soldering iron](/images/screen1.jpeg)
-
-### PCB — display side
-![PCB display side](/images/screen2.jpeg)
-
-### PCB — component side
-ST-Link programming header (CON1), mercury tilt switch, and buzzer are visible with labels.
-
-![PCB component side](/images/screen3.jpeg)
-
-### ST-Link V2 programmer
-Use the **left row** of pins for STM8 (SWIM + RST + GND + VDC 5V).
-
-![ST-Link V2](/images/screen4.jpeg)
-
-### CH340 USB-UART module (for debug UART)
-Reference photo of a CH340N SOP-8 breakout used to monitor the debug serial output on PD5.
-
-![CH340 USB-UART module](/images/screen5.jpeg)
-
-### Work in progress
-Board open on the bench with ST-Link and UART adapter connected, running firmware during development.
-
-![Work in progress](/images/screen6.jpeg)
-
 ## CXG-E60WT Schematic diagram
 
 ![CXG-E60WT Scheme](/images/scheme.gif)
@@ -202,5 +187,7 @@ The following additional hardware has been installed:
 - Mercury Switch: https://www.aliexpress.com/item/32509962658.html?spm=a2g0s.9042311.0.0.274233edX3SZw4
 - SMD Buzzer:   https://www.aliexpress.com/item/4000043864737.html?spm=a2g0s.9042311.0.0.274233ediyCCli
 
+
+![Work in progress — board open on the bench with ST-Link and UART adapter](/images/screen6.jpeg)
 
 Please feel free to use, modify, add new cool features.  Good luck!
