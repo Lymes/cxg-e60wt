@@ -162,6 +162,36 @@ The firmware includes two independent hardware protection layers:
 The R14/R16 voltage divider feeds the DC bus voltage to ADC CH1. The firmware automatically scales the maximum heater power to maintain constant thermal output regardless of mains voltage (110V or 220V AC), with no manual configuration required.
 
 
+## Photos
+
+### CXG-E60WT soldering iron
+> Before opening, remove the rubber buttons from the handle.
+
+![CXG-E60WT soldering iron](/images/screen1.jpeg)
+
+### PCB — display side
+![PCB display side](/images/screen2.jpeg)
+
+### PCB — component side
+ST-Link programming header (CON1), mercury tilt switch, and buzzer are visible with labels.
+
+![PCB component side](/images/screen3.jpeg)
+
+### ST-Link V2 programmer
+Use the **left row** of pins for STM8 (SWIM + RST + GND + VDC 5V).
+
+![ST-Link V2](/images/screen4.jpeg)
+
+### CH340 USB-UART module (for debug UART)
+Reference photo of a CH340N SOP-8 breakout used to monitor the debug serial output on PD5.
+
+![CH340 USB-UART module](/images/screen5.jpeg)
+
+### Work in progress
+Board open on the bench with ST-Link and UART adapter connected, running firmware during development.
+
+![Work in progress](/images/screen6.jpeg)
+
 ## CXG-E60WT Schematic diagram
 
 ![CXG-E60WT Scheme](/images/scheme.gif)
