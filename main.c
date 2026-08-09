@@ -69,7 +69,7 @@ enum WorkingModes
 
 // PID controller gains (integer arithmetic, divided by PID_SCALE for actual gain)
 // Kp=1.5, Ki=0.2/sample, Kd=1.0 — tune to taste
-#define PID_KP         15   // proportional  (×PID_SCALE)
+#define PID_KP         60   // proportional  (×PID_SCALE) — must be high enough to overcome
 #define PID_KI          2   // integral/sample (×PID_SCALE)
 #define PID_KD        100   // derivative    (×PID_SCALE) — primary brake against overshoot
 #define PID_SCALE      10
