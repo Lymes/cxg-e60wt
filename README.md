@@ -4,6 +4,8 @@
 
 A firmware for the CXG-E60WT soldering iron with STM8S103K3 MCU. Features sleep/wake-up modes, buzzer, error detection, per-tip ADC calibration, mains voltage compensation (110V/220V), overtemperature protection, and a **proportional-derivative (PD) controller with power taper** for accurate, overshoot-free temperature regulation.
 
+With this firmware and the small hardware additions (tilt switch + buzzer), this inexpensive iron punches well above its weight — delivering temperature stability and safety features on par with professional soldering stations costing many times more.
+
 For those who want to re-build the firmware you'll need two tools:
 
 - **stm8flash** — ST-Link flashing utility: [vdudouyt/stm8flash](https://github.com/vdudouyt/stm8flash)
