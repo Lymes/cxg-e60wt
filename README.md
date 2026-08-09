@@ -74,19 +74,17 @@ A debug build activates a serial trace output on **PD5 (UART1 TX, 115200 8N1, 5V
 Connect a USB-UART adapter (**5V-compatible** RX) to CON1. Any adapter works — the CH340N SOP-8 shown here was just what happened to be in the drawer:
 
 ```
-Soldering iron        USB-UART dongle (CH340N SOP-8)
-──────────────────────────────────────────────────────
-CON1 GND   ────────── Pin 1 (GND)
-CON1 VDD+  ────────── Pin 5 (VCC, 5V)
-MCU PD5    ────────── Pin 7 (RXD) ← confirmed on CH340N SOP-8
+Soldering iron        USB-UART adapter
+──────────────────────────────────────
+CON1 GND   ────────── GND
+MCU PD5    ────────── RXD
 ```
 
 <img src="/images/screen5.jpeg" width="260" align="right">
 
-> **Note:** on the CH340N SOP-8 package, RXD is pin 7 and TXD is pin 6
-> (opposite of many breakout boards). Verify with your specific module.
+> **Note:** the adapter is powered from USB — do **not** connect VDD+ from CON1. Only GND and RXD are needed.
 
-`CON1` is the ST-Link programming header already on the board. `VDD+` is produced by the on-board **IC3 L05** 5V LDO — safe secondary-side power, isolated from mains.
+`CON1` is the ST-Link programming header already on the board. `MCU PD5` is the UART1 TX pin (5V level).
 
 For the ST-Link V2, use the **left row** of pins for STM8 (SWIM + RST + GND + VDC 5V):
 
