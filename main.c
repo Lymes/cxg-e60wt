@@ -404,7 +404,6 @@ void mainLoop(void)
     {
         PWM_duty(PWM_CH1, PWM_POWER_OFF); // immediate OFF — never skip this
         S7C_setChars("OVH");
-        S7C_setDigit(2, 0);
         S7C_refreshDisplay(nowTime);
         beepAlarm();
         return;
