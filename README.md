@@ -33,11 +33,33 @@ On a 240V supply the rectified DC bus is ~339V. The firmware limits maximum heat
 
 Both elements deliver the same ~60 W to the tip at operating temperature. The difference is in **controllability**: with A1316 the PD controller has only 11 % of duty cycle to work with. If the tip temperature rises faster than the 200 ms sampling interval, the controller reacts late and has little margin to correct. With A1326 the 47 % range gives the controller ample headroom to both accelerate warm-up and brake cleanly before overshooting the setpoint.
 
+### Why manufacturers ship A1316 worldwide
+
+The A1316 is a deliberate cost-optimization decision: one single heater SKU covers every market. On 110V mains (USA, Japan) it works perfectly — the firmware runs at ~48% duty and the PD controller has ample range. On 220–240V the iron still heats up and solders, so most customers never notice anything wrong. A unified global inventory is simply cheaper than stocking two variants.
+
+The stock factory firmware makes things worse: it almost certainly does not implement proper voltage compensation. On 220V with A1316 and no compensation the heater runs at a fixed high duty → permanent overpower → accelerated degradation of the ceramic element.
+
+This custom firmware fixes that: it correctly limits power for both heater types on any mains voltage. But the physics cannot be changed — A1316 on 230V will always leave the PD controller with only 11% of duty range to work with.
+
+### Behaviour on 110V mains (USA/Japan)
+
+For completeness, here is how each heater behaves when the same iron is plugged into a 110V supply ($V_{DC} \approx 155\text{V}$):
+
+| | A1326 (220V, `HT=0`) | A1316 (110V, `HT=1`) |
+|---|---|---|
+| Max duty on 110V | 100 % | 48 % |
+| Max power at hot tip | ~30 W ❌ | ~57 W ✅ |
+| Verdict | Underpowered — slow warm-up, loses temp under load | Works correctly |
+
+So the two heaters are complementary: A1326 is optimal for 230V, A1316 for 110V. If you travel between regions, swapping the heater element (same physical format, widely available) and toggling `HT` in the menu gives full performance everywhere.
+
 **Recommendation:** if your iron came with an A1316, replace it with an A1326 (widely available, same physical format). Keep `HT=0` (the default) and enjoy better temperature stability and a safer configuration.
 
 If you cannot source an A1326 and must run an A1316 on 230V, set `HT=1` in the setup menu — the firmware will correctly limit power. But read the warning above carefully first.
 
-For those who want to re-build the firmware you'll need two tools:
+## Building the firmware
+
+You will need two tools:
 
 - **stm8flash** — ST-Link flashing utility: [vdudouyt/stm8flash](https://github.com/vdudouyt/stm8flash)
 - **SDCC** — Small Device C Compiler: [sdcc.sourceforge.net](https://sdcc.sourceforge.net/)
