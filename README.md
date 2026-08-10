@@ -182,6 +182,7 @@ Double-click on any key will cyclically change the following menu items:
 * **FRC**: forced mode temperature increment in degrees, range 0..100 (default 0)
 * **ADL**: ADC cold point calibration (sensor at ambient temperature) — per-tip
 * **ADH**: ADC hot point calibration (sensor at maximum temperature) — per-tip
+* **HT**: heater type — `0` = A1326 (220V, default), `1` = A1316 (110V). **Must be set correctly before first use** — see [Heater element selection](#heater-element-selection-a1316-vs-a1326).
 
 To exit the Service Menu just switch OFF/ON the soldering iron.
 
