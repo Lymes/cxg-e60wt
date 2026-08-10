@@ -4,7 +4,38 @@
 
 A firmware for the CXG-E60WT soldering iron with STM8S103K3 MCU. Features sleep/wake-up modes, buzzer, error detection, per-tip ADC calibration, mains voltage compensation (110V/220V), overtemperature protection, and a **proportional-derivative (PD) controller with power taper** for accurate, overshoot-free temperature regulation.
 
+> [!WARNING]
+> **This firmware defaults to the A1326 (220V) heater element.**
+> If your iron is fitted with an **A1316 (110V)** heater, you **MUST** enter the setup menu and set **`HT = 1`** before first use. Running the firmware with the wrong heater type setting on a 220V mains supply will deliver roughly **4× the rated power** to the heater element and **destroy it within seconds**.
+>
+> To enter the setup menu: hold the **`+`** button while powering on. Navigate to the **`HT`** item (last entry). Set it to **`0`** for A1326 (220V) or **`1`** for A1316 (110V). The value is saved to EEPROM automatically.
+
 With this firmware and the small hardware additions (tilt switch + buzzer), this inexpensive iron punches well above its weight — delivering temperature stability and safety features on par with professional soldering stations costing many times more.
+
+## Heater element selection (A1316 vs A1326)
+
+Many CXG-E60WT units ship from the factory with an **A1316 (110V, ~55Ω cold)** heater — designed for North American and Japanese 100–120V mains. This firmware supports both elements via the `HT` menu setting, but **on 220–240V European mains the A1326 (220V) is the correct and recommended choice**.
+
+### Why A1326 is better for 230V / European mains
+
+On a 240V supply the rectified DC bus is ~339V. The firmware limits maximum heater power by capping the PWM duty cycle (`minPwm`). The effective duty range determines how much room the PD controller has to accelerate heating and brake before overshoot:
+
+| | A1326 (220V, `HT=0`) | A1316 (110V, `HT=1`) |
+|---|---|---|
+| Cold resistance | ~200 Ω | ~55 Ω |
+| Hot resistance (400 °C) | ~800 Ω | ~200 Ω |
+| Max duty on 240V | **47 %** | 11 % |
+| Max power at hot tip | ~60 W ✓ | ~63 W ✓ |
+| PD control range | **±47 %** | ±11 % |
+| PWM resolution at steady state | **0.28 W/step** | 0.13 W/step |
+| Risk of misconfiguration | Low | **Very high** (heater destroyed instantly at `HT=0`) |
+| Default firmware setting | ✅ Yes | No — requires `HT=1` before first use |
+
+Both elements deliver the same ~60 W to the tip at operating temperature. The difference is in **controllability**: with A1316 the PD controller has only 11 % of duty cycle to work with. If the tip temperature rises faster than the 200 ms sampling interval, the controller reacts late and has little margin to correct. With A1326 the 47 % range gives the controller ample headroom to both accelerate warm-up and brake cleanly before overshooting the setpoint.
+
+**Recommendation:** if your iron came with an A1316, replace it with an A1326 (widely available, same physical format). Keep `HT=0` (the default) and enjoy better temperature stability and a safer configuration.
+
+If you cannot source an A1326 and must run an A1316 on 230V, set `HT=1` in the setup menu — the firmware will correctly limit power. But read the warning above carefully first.
 
 For those who want to re-build the firmware you'll need two tools:
 

@@ -54,10 +54,11 @@ enum
     FORCE_VAL,
     ADC_MIN_VAL,  // ADC cold point (per-tip)
     ADC_MAX_VAL,  // ADC hot point (per-tip)
+    HEATER_TYPE,  // 0 = 220V heater, 1 = 110V heater
 };
 
 static uint32_t _menuDisplayTime = 0;
-static const char *_menuNames[] = {"SOU", "CAL", "SL1", "SL2", "FRC", "ADL", "ADH"};
+static const char *_menuNames[] = {"SOU", "CAL", "SL1", "SL2", "FRC", "ADL", "ADH", "HT "};
 
 extern struct Button _btnPlus;
 extern struct Button _btnMinus;
@@ -80,7 +81,7 @@ void setup_menu(void)
         if (menuAction)
         {
             _menuDisplayTime = nowTime + MENU_DISPLAY_DELAY;
-            menuIndex = menuIndex > ADC_MAX_VAL ? 0 : menuIndex < 0 ? ADC_MAX_VAL : menuIndex;
+            menuIndex = menuIndex > HEATER_TYPE ? 0 : menuIndex < 0 ? HEATER_TYPE : menuIndex;
         }
 
         if (nowTime < _menuDisplayTime)
@@ -182,6 +183,18 @@ void setup_menu(void)
                 S7C_setDigit(0, _eepromData.adcMaxRT / 100);
                 S7C_setDigit(1, (_eepromData.adcMaxRT / 10) % 10);
                 S7C_setDigit(2, _eepromData.adcMaxRT % 10);
+                break;
+            }
+            case HEATER_TYPE: // HEATER TYPE: 0 = 220V, 1 = 110V
+            {
+                uint16_t oldHeaterType = _eepromData.heaterType;
+                checkButton(&_btnPlus, (int16_t *)&_eepromData.heaterType, 1, nowTime);
+                checkButton(&_btnMinus, (int16_t *)&_eepromData.heaterType, -1, nowTime);
+                _eepromData.heaterType = (_eepromData.heaterType > 1) ? 0 : _eepromData.heaterType;
+                if (oldHeaterType != _eepromData.heaterType) _haveToSaveData = nowTime;
+                S7C_setSymbol(0, 0);
+                S7C_setSymbol(1, 0);
+                S7C_setDigit(2, _eepromData.heaterType); // 0 = 220V, 1 = 110V
                 break;
             }
             default:

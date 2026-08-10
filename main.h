@@ -36,8 +36,9 @@ struct EEPROM_DATA
     uint16_t sleepTimeout;
     uint16_t deepSleepTimeout;
     uint16_t forceModeIncrement;
-    uint16_t adcMinRT; // ADC value at cold tip (MIN_HEAT), calibrated per tip
-    uint16_t adcMaxRT; // ADC value at hot tip (MAX_HEAT), calibrated per tip
+    uint16_t adcMinRT;    // ADC value at cold tip (MIN_HEAT), calibrated per tip
+    uint16_t adcMaxRT;    // ADC value at hot tip (MAX_HEAT), calibrated per tip
+    uint16_t heaterType;  // 0 = 220V heater (default), 1 = 110V heater
 };
 
 void checkPendingDataSave(uint32_t nowTime);

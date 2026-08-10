@@ -135,6 +135,7 @@ void setup(void)
     // Migration: if new fields are zero (old firmware EEPROM), set defaults
     if (_eepromData.adcMinRT == 0) _eepromData.adcMinRT = MIN_ADC_RT;
     if (_eepromData.adcMaxRT == 0) _eepromData.adcMaxRT = MAX_ADC_RT;
+    // heaterType has no sentinel value (0 is valid = 220V default); no migration needed
     _adcRange = _eepromData.adcMaxRT - _eepromData.adcMinRT;
 
     // Press +button when power the device will enter to Setup Menu
@@ -291,11 +292,13 @@ void mainLoop(void)
         _pidLastTime = nowTime;
 
         // Voltage compensation: mains voltage is stable; 200ms update is sufficient.
-        // P = (100-pwm)/100 * Vdc^2/R — cap max power at 220V, allow full power at 110V.
-        // At 220V (ADC≈673): minPwm=50.  At 110V (ADC≈337): minPwm=0.
+        // P = (100-pwm)/100 * Vdc^2/R — cap max power for heater rating.
+        // pwrConst=50 → 220V heater (A1326, ~800Ω): minPwm=50 at 220V.
+        // pwrConst=12 → 110V heater (A1316, ~200Ω): minPwm=50 at 220V, same ~60W at hot.
         if (adcUIn > 10)
         {
-            uint32_t pwr = (ADC_NOMINAL_220V * ADC_NOMINAL_220V * 50UL) /
+            uint32_t pwrConst = (_eepromData.heaterType == 1) ? 12UL : 50UL;
+            uint32_t pwr = (ADC_NOMINAL_220V * ADC_NOMINAL_220V * pwrConst) /
                            ((uint32_t)adcUIn * (uint32_t)adcUIn);
             minPwm = (pwr >= 100) ? 0 : (int16_t)(100 - (int16_t)pwr);
         }
