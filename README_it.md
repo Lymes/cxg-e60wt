@@ -2,7 +2,7 @@
 
 ![Saldatore CXG-E60WT](/images/screen1.jpeg)
 
-Firmware per il saldatore CXG-E60WT con MCU STM8S103K3. Dispone di modalità sleep/wake-up, cicalino, rilevamento errori, calibrazione ADC per punta, compensazione della tensione di rete (110V/220V), protezione da sovratemperatura e un **controllore proporzionale-derivativo (PD) con riduzione di potenza** per una regolazione della temperatura precisa e senza sovraelongazione.
+Firmware per il saldatore CXG-E60WT con MCU STM8S103K3. Dispone di modalità sleep/wake-up, cicalino, rilevamento errori, calibrazione ADC per punta, compensazione della tensione di rete (110V/220V), protezione da sovratemperatura e un **controllore proporzionale-derivativo (PD) con riduzione di potenza** per una regolazione della temperatura precisa e senza sovraoscillazione.
 Con questo firmware e le piccole aggiunte hardware (interruttore a inclinazione + cicalino), questo economico saldatore supera di gran lunga le aspettative — offrendo stabilità di temperatura e funzionalità di sicurezza paragonabili a stazioni di saldatura professionali che costano molte volte di più.
 
 > [!WARNING]
@@ -18,7 +18,7 @@ Molti modelli CXG-E60WT vengono forniti di fabbrica con un riscaldatore **A1316 
 
 ### Perché A1326 è migliore per reti da 230V / europee
 
-Con un'alimentazione a 240V il bus DC raddrizzato è ~339V. Il firmware limita la potenza massima del riscaldatore limitando il ciclo di lavoro PWM (`minPwm`). L'intervallo di lavoro effettivo determina quanto margine ha il controllore PD per accelerare il riscaldamento e frenare prima della sovraelongazione:
+Con un'alimentazione a 240V il bus DC raddrizzato è ~339V. Il firmware limita la potenza massima del riscaldatore limitando il ciclo di lavoro PWM (`minPwm`). L'intervallo di lavoro effettivo determina quanto margine ha il controllore PD per accelerare il riscaldamento e frenare prima della sovraoscillazione:
 
 | | A1326 (220V, `HT=0`) | A1316 (110V, `HT=1`) |
 |---|---|---|
@@ -217,12 +217,12 @@ Il firmware utilizza un **controllore proporzionale-derivativo** con **riduzione
 
 - **Termine P**: riduce proporzionalmente la potenza del riscaldatore man mano che la temperatura si avvicina al setpoint
 - **Termine D**: rileva la velocità di variazione della temperatura e frena precocemente — si adatta automaticamente all'inerzia termica di diverse dimensioni di punta
-- **Riduzione di potenza**: limita la potenza massima del riscaldatore a `(diff + 15)%` dell'intervallo disponibile. A 50°C di distanza → max 65%; a 10°C di distanza → max 25%; previene l'accumulo di energia nell'elemento riscaldante che causa sovraelongazione
+- **Riduzione di potenza**: limita la potenza massima del riscaldatore a `(diff + 15)%` dell'intervallo disponibile. A 50°C di distanza → max 65%; a 10°C di distanza → max 25%; previene l'accumulo di energia nell'elemento riscaldante che causa sovraoscillazione
 - **Cutoff rigido**: il riscaldatore viene spento immediatamente quando la temperatura raggiunge o supera il setpoint
 
 **Risultati misurati (con punta installata):**
 
-| Setpoint | Sovraelongazione | Precisione a regime |
+| Setpoint | Sovraoscillazione | Precisione a regime |
 |---|---|---|
 | 120°C | +2°C | ±3°C |
 | 250°C | 0°C | ±4°C |
