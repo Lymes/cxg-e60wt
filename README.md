@@ -168,8 +168,8 @@ Monitor with `minicom -o -D /dev/cu.usbserial-* -b 115200` (or any serial termin
 
 | Build | Flash used | Free (of 8192 B) |
 |---|---|---|
-| Release | ~6902 B | ~1290 B |
-| Debug | ~7535 B | ~657 B |
+| Release | 7094 B | 1098 B |
+| Debug | 7674 B | 518 B |
 
 ## Service Menu
 You can enter the Service Menu pressing "+" key and Power ON.
