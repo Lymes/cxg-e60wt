@@ -192,6 +192,16 @@ To exit the Service Menu just switch OFF/ON the soldering iron.
 * To reset all values to DEFAULT press "-" key and power ON the device
 * Pressing "+" and "-" simultaneously toggles FORCED mode (display shows °F symbol)
 
+## Error Codes
+
+The firmware displays the following error codes on the 7-segment display. All errors switch the heater OFF immediately.
+
+| Code | Display | Cause | Recovery |
+|---|---|---|---|
+| **ER1** | `Er1` | **Sensor short circuit** — ADC reading is well below the calibrated cold point (`adcVal < adcMinRT / 2`). Typically caused by a damaged thermocouple/NTC, a solder bridge on the sensor circuit, or a tip with very poor thermal contact. Debounced: requires 500 consecutive bad readings (~500 ms) to trigger. | Reseat or replace the tip; check sensor wiring. Power cycle to resume. |
+| **ER2** | `Er2` | **Sensor open circuit / broken sensor** — ADC reading exceeds the hardware open-circuit threshold (`adcVal > 1000`). Typically a broken thermocouple wire, missing tip, or failed sensor element. Same 500-reading debounce as ER1. | Reseat or replace the tip; check sensor wiring. Power cycle to resume. |
+| **OVH** | `OuH` | **Overtemperature fault (latched)** — triggered by either of two independent conditions: **(1) Hard limit** — measured temperature exceeded 480 °C; **(2) Thermal runaway** — heater was commanded OFF but temperature continued rising for 8 consecutive seconds, indicating transistor Q1 (IRF840) is stuck ON. The fault latches until power cycle. | Allow the iron to cool. Investigate the root cause (stuck Q1, faulty sensor, incorrect ADC calibration). Power cycle to clear. |
+
 ## Per-tip ADC Calibration (ADL / ADH)
 
 Different tips have different thermal contact with the ceramic heater, resulting in a shifted ADC response curve. Use **ADL** and **ADH** to calibrate each tip:
