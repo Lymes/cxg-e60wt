@@ -254,7 +254,3 @@ The following additional hardware has been installed:
 ![Work in progress — board open on the bench with ST-Link and UART adapter](/images/screen6.jpeg)
 
 Please feel free to use, modify, add new cool features.  Good luck!
-
----
-
-🌐 [English](README.md) | [Italiano](README_it.md) | [Русский](README_ru.md)
