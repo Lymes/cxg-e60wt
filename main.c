@@ -76,6 +76,11 @@ enum WorkingModes
 // Thermal runaway: if heater is commanded OFF but temp stays >target+60°C for this long,
 // transistor Q1 is likely stuck ON. Threshold=60°C accounts for ~40°C thermal inertia overshoot.
 #define RUNAWAY_TIMEOUT_MS 8000UL
+// Minimum temperature rise above the sliding baseline that is considered a genuine runaway.
+// Each ADC step ≈ 4 °C; 2-step margin prevents a baseline-slide + noise-bounce from
+// falsely triggering OVH on slow cooling (e.g. deep sleep entry from 100 °C).
+// A stuck IRF840 driving full power raises the tip by >>8 °C over 8 s — still caught.
+#define RUNAWAY_RISE_MARGIN 8
 
 uint32_t _haveToSaveData = 0;
 static uint32_t _sleepTimer = 0;
@@ -386,15 +391,19 @@ void mainLoop(void)
         }
         else if ((nowTime - _heaterOffStart) > RUNAWAY_TIMEOUT_MS)
         {
-            if (currentDegrees > _runawayBaseTemp)
+            if (currentDegrees > _runawayBaseTemp + RUNAWAY_RISE_MARGIN)
             {
-                // Temperature rose during the window — transistor Q1 is stuck ON
+                // Temperature rose clearly above baseline — transistor Q1 is stuck ON.
+                // Margin of RUNAWAY_RISE_MARGIN (≈2 ADC steps) prevents a single quantization
+                // noise dip from lowering the baseline and then triggering a false fault when
+                // the reading bounces back to the true value (root cause of intermittent OVH
+                // on sleep/deep-sleep entry).
                 if (!_overheatFault) DBG_PRINTF("Rw T=%d\r\n", currentDegrees);
                 _overheatFault = 1;
             }
             else
             {
-                // Temperature unchanged — ADC quantization during slow cooling; extend window
+                // Temperature unchanged or within noise floor — extend window
                 _heaterOffStart = nowTime;
             }
         }
