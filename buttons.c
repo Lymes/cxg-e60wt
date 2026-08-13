@@ -49,6 +49,7 @@ uint8_t checkButton(struct Button *btn, int16_t *value, int8_t increment, uint32
             if (!(btn->skipCounter++ % FAST_INCREMENT))
             {
                 *value += increment;
+                beep();
             }
         }
         else if ((nowTime - btn->lastBounceTime) > SHORT_PRESS)

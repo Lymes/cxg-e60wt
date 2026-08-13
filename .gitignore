@@ -13,3 +13,4 @@
 obj/
 .DS_Store
 .vscode
+beep_emulator.py

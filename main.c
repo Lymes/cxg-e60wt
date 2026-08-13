@@ -87,6 +87,7 @@ static uint32_t _sleepTimer = 0;
 static uint32_t _heatPointDisplayTime = 0;
 static uint8_t _currentState = NORMAL_MODE;
 static uint8_t _overheatFault = 0; // latched: cleared only by power cycle
+static uint8_t _tempReached = 0;   // latched: re-armed on setpoint or mode change
 
 struct EEPROM_DATA _eepromData;
 struct Button _btnPlus  = {PB7, 0, 0, 0, 0, 0, 0};
@@ -228,6 +229,7 @@ void mainLoop(void)
         beepAlarm();
         _currentState = sleepState;
         oldSleepState = sleepState;
+        _tempReached = 0; // re-arm temp-reached beep for new mode target
     }
 
     // Check for buttons
@@ -254,6 +256,7 @@ void mainLoop(void)
             // Suppress derivative kick: setpoint step must not look like a
             // temperature measurement change to the D term.
             _pidResetDeriv = 1;
+            _tempReached = 0; // re-arm temp-reached beep for new setpoint
         }
     }
     oldAction = action;
@@ -414,10 +417,11 @@ void mainLoop(void)
     }
     if (_overheatFault)
     {
+        static uint8_t _faultBeeped = 0;
         PWM_duty(PWM_CH1, PWM_POWER_OFF); // immediate OFF — never skip this
         S7C_setChars("OVH");
         S7C_refreshDisplay(nowTime);
-        beepAlarm();
+        if (!_faultBeeped) { _faultBeeped = 1; beepAlarm(); }
         return;
     }
     // --- END OVERTEMPERATURE PROTECTION ---
@@ -437,6 +441,17 @@ void mainLoop(void)
     //   * when the current temperature is in range ±10 degrees
     uint16_t displayVal = (currentDegrees < 0) ? 0 : currentDegrees;
     uint8_t tempInRange = (displayVal >= targetHeatPoint - 10) && (displayVal <= targetHeatPoint + 10);
+    // Temp-reached beep: fire once when iron first hits setpoint.
+    // _tempReached is re-armed (cleared) on every setpoint or mode change,
+    // so the beep fires exactly once per new target — even if the temperature
+    // later oscillates around the setpoint.
+    // Skip in DEEPSLEEP_MODE (target = 0, iron just cooling down).
+    if (tempInRange && !_tempReached
+        && (_currentState == NORMAL_MODE || _currentState == FORCED_MODE))
+    {
+        _tempReached = 1;
+        beep();
+    }
     if (nowTime < _heatPointDisplayTime || tempInRange)
     {
         displayVal = targetHeatPoint;
