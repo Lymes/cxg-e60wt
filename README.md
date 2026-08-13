@@ -247,8 +247,8 @@ The R14/R16 voltage divider feeds the DC bus voltage to ADC CH1. The firmware au
 ## Additional hardware
 
 The following additional hardware has been installed:
-- Mercury Switch: https://www.aliexpress.com/item/32509962658.html?spm=a2g0s.9042311.0.0.274233edX3SZw4
-- SMD Buzzer:   https://www.aliexpress.com/item/4000043864737.html?spm=a2g0s.9042311.0.0.274233ediyCCli
+- Mercury Switch: https://it.aliexpress.com/item/1005012839498971.html
+- SMD Buzzer:   https://it.aliexpress.com/item/1005007218215566.html
 
 
 ![Work in progress — board open on the bench with ST-Link and UART adapter](/images/screen6.jpeg)
