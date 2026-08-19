@@ -77,10 +77,12 @@ enum WorkingModes
 // transistor Q1 is likely stuck ON. Threshold=60°C accounts for ~40°C thermal inertia overshoot.
 #define RUNAWAY_TIMEOUT_MS 8000UL
 // Minimum temperature rise above the sliding baseline that is considered a genuine runaway.
-// Each ADC step ≈ 4 °C; 2-step margin prevents a baseline-slide + noise-bounce from
-// falsely triggering OVH on slow cooling (e.g. deep sleep entry from 100 °C).
-// A stuck IRF840 driving full power raises the tip by >>8 °C over 8 s — still caught.
-#define RUNAWAY_RISE_MARGIN 8
+// Each ADC step ≈ 4 °C. A stuck IRF840 at full power raises the tip by many tens of °C in
+// 8 s — a margin of 20 °C still catches all real faults. A larger value (vs the old 8 °C)
+// prevents false OVH from thermal flyback on small tips: at sleep entry the heater element
+// is saturated and redistributes ~10-15 °C of stored heat to the thermocouple briefly.
+// A stuck IRF840 driving full power raises the tip by >>20 °C over 8 s — still caught.
+#define RUNAWAY_RISE_MARGIN 20
 
 uint32_t _haveToSaveData = 0;
 static uint32_t _sleepTimer = 0;
@@ -397,10 +399,9 @@ void mainLoop(void)
             if (currentDegrees > _runawayBaseTemp + RUNAWAY_RISE_MARGIN)
             {
                 // Temperature rose clearly above baseline — transistor Q1 is stuck ON.
-                // Margin of RUNAWAY_RISE_MARGIN (≈2 ADC steps) prevents a single quantization
-                // noise dip from lowering the baseline and then triggering a false fault when
-                // the reading bounces back to the true value (root cause of intermittent OVH
-                // on sleep/deep-sleep entry).
+                // Margin of RUNAWAY_RISE_MARGIN (5 ADC steps, 20 °C) is large enough to
+                // absorb thermal flyback on small tips at sleep entry, while still catching
+                // a stuck IRF840 which raises the tip by many tens of °C in 8 s.
                 if (!_overheatFault) DBG_PRINTF("Rw T=%d\r\n", currentDegrees);
                 _overheatFault = 1;
             }
